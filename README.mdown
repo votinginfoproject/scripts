@@ -4,12 +4,14 @@
 
 This file, in its current form, parses character-delimited files and writes the data to a valid <acronym title="Voting Information Project">VIP</acronym> feed. It requires a <tt>config.ini</tt> file with these required sections:
 
-*  Main
-  *  Defines general configuration values for the script to function
-*  DataSource
-  *  Defines either a data directory or a database connection
-*  Header
-  *  Defines the static data for the head of the <acronym title="Voting Information Project">VIP</acronym> feed
+<dl>
+  <dt>Main</dt>
+  <dd>Defines general configuration values for the script to function</dd>
+  <dt>DataSource</dt>
+  <dd>Defines either a data directory or a database connection</dd>
+  <dt>Header</dt>
+  <dd>Defines the static data for the head of the <acronym title="Voting Information Project">VIP</acronym> feed</dd>
+</dl>
 
 In addition to these general requirements, the resultant <acronym title="Voting Information Project">VIP</acronym> feed is built from a set of defined templates, the location of which is defined in the _Main_ section of the <tt>config.ini</tt>. The templates contain fragments of [<acronym title="Voting Information Project">VIP</acronym> schema](http://code.google.com/p/election-info-standard/downloads/list "Voting Information Project Downloads Page") elements. For example:
 
