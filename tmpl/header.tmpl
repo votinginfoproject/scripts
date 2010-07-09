@@ -1,0 +1,12 @@
+<?xml version="1.0" standalone="yes"?>
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.1.xsd" schemaVersion="2.1">
+  <state id="{state_fips}">
+    <name>{state_name}</name>
+  </state>
+  <source id="{source_id}">
+    <name>State of {state_name}</name>
+    <vip_id>{state_fips}</vip_id>		
+    <datetime>{script_start}</datetime>
+    <description>{state_name} has posted the official precinct and polling place list at {organization_url} This feed is the VIP Feed of that data as interpreted by VIP staffers and includes precincts, polling location, and street segments.</description>
+    <organization_url>{organization_url}</organization_url>
+  </source>
