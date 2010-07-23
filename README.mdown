@@ -40,7 +40,7 @@ Each placeholder (e.g. <tt>{STREET_SEGMENT_ID}</tt>) represents a column from th
 
 ### Data
 
-The data files should delimited with a character that would never appear in the field data. The first line of the file should contain the fieldnames and there should be one file per <acronym title="Voting Information Project">VIP</acronym> schema structure (e.g. to create the street segments, all the necessary data should be contained within a single file).
+The data files should be delimited with a character that would never appear in the field data. The first line of the file should contain the fieldnames and there should be one file per <acronym title="Voting Information Project">VIP</acronym> schema structure (e.g. to create the street segments, all the necessary data should be contained within a single file).
 
 #### Locality Data File Example
 
