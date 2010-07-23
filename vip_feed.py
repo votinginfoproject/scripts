@@ -2,25 +2,32 @@ import re
 import sys
 import os.path
 import glob
+import urllib
+from xml.etree import ElementTree
 from datetime import datetime,tzinfo
 from optparse import OptionParser,make_option
 from ConfigParser import SafeConfigParser
 from csv import DictReader,Error as CSVError
 
 class SimpleDatabase(object):
-  """Simple class to interface with the VIP database"""
+  """Simple class to interface with a database"""
   
-  def __init__(self,options):
+  def __init__(self, options):
+    """Initializes the class for the various required options to create a database connection.
+    
+    Arguments:
+    options -- the options needed to create a database connection
+    """
     self.__dbtype = options['type']
     del options['type']
     
     try:
-      if dbtype=='mysql':
+      if self.__dbtype=='mysql':
         import MySQLdb
         from MySQLdb import connection,cursors
         options.update({'cursorclass':MySQLdb.cursors.DictCursor})
         self.__db = MySQLdb.connect(**options)
-      elif dbtype=='mssql':
+      elif self.__dbtype=='mssql':
         options.update({'as_dict':True})
         sys.exit(options)
         self.__db = pymssql.connect(**options)
@@ -29,16 +36,16 @@ class SimpleDatabase(object):
       
     except:
       print "Unexpected error: ",sys.exc_info()[0]
-      return
   
-  def query(self,statement):
+  def query(self, statement):
+    """Queries the defined database with the given statement"""
     try:
       print "Querying database..."
       self.__cursor.execute(statement)
       
     finally:
       self.rows = self.__cursor.fetchall()
-      print "Getting all %d rows..." % len(self.rows)
+      print "Getting all {0} rows...".format(len(self.rows))
       self.fields = self.__cursor.description
       self.__cursor.close()   
       self.__db.close()
@@ -46,7 +53,7 @@ class SimpleDatabase(object):
   def get_cursor(self):
     return self.__cursor
   
-  def set_cursor(self,cursor):
+  def set_cursor(self, cursor):
     self.__cursor = cursor
     
   def get_db(self):
@@ -55,16 +62,16 @@ class SimpleDatabase(object):
   def set_db(self,db):
     self.__db = db
 
-  cursor = property(get_cursor,set_cursor)
+  cursor = property(get_cursor, set_cursor)
   db = property(get_db,set_db)
-
+    
 class FileParser(object):
   """Simple file parser"""
-  def __init__(self,options):
+  def __init__(self, options):
     self.__read_file = options['file_name']
     self.__write_mode = options['write_mode']
     self.__parser_type = options['parser_type']
-    self.__write_file = options['vip_file']
+    self.__write_file = options['output_file']
     
     if self.__parser_type=='regex':
       self.__parser = re.compile(options['regex'])
@@ -75,16 +82,37 @@ class FileParser(object):
       self.__parser = dyn_class(options['parser_module'],options['parser_class'])
       self.__parser = self.__parser(open(self.__read_file),**self.__parser_cfg)
   
-  def parse(self,template,static_opts=None):
+  def parse(self,template, static_opts=None):
     f = open(self.__read_file,'r')
     w = open(self.__write_file,self.__write_mode)
-
+    
     if self.__parser_type=='csv':
-      try:
-        for line in self.__parser:
-          w.write(template.format(**line))
-      except CSVError:
-        """Something..."""
+
+      for line in self.__parser:
+        # urlencode all of the values
+        line.update(zip(line.iterkeys(),map(urllib.quote,line.itervalues())))
+        
+        try:
+          element = ElementTree.XML(template.format(**line))
+          
+          for parent in element[:]:
+            for child in parent[:]:
+              if child in parent and child.text is None and len(child)==0:
+                parent.remove(child)
+                
+            if parent in element and parent.text is None and len(parent)==0:
+              element.remove(parent)
+            
+          w.write(ElementTree.tostring(element))
+            
+        except CSVError:
+          "Something..."
+        except:
+          sys.stdout.flush()
+          print '\n'.join(map(lambda x: str(x),sys.exc_info()))
+          print line
+          continue #just skip the line...it's beyond hope
+
     elif self.__parser_type=='regex':
       for line in f:
         line_data = self.__parser.match(line)
@@ -93,9 +121,9 @@ class FileParser(object):
           line_data = line_data.groupdict()
   
           for k in line_data.iterkeys():
-            line_data[k] = line_data[k].strip()
-
-          w.write(template.format(**line_data))
+            line_data[k] = urllib.quote(line_data[k].strip())
+          
+          w.write(ElementTree.tostring(ElementTree.XML(template.format(**line_data))))
     
     f.close()  
     w.close()
@@ -145,7 +173,7 @@ def main():
     
     if config.has_section(section):
       options = config_section_as_dict(config.items(section))
-      options['vip_file'] = vip_file
+      options['output_file'] = vip_file
     else:
       print "Config {0} not found".format(section)
       continue
@@ -162,17 +190,12 @@ def main():
       options['file_name'] = "".join([config.get('DataSource','data_dir'),options['data']])
       options['write_mode'] = write_mode
       
-#       extra_opts = {}
-#       extra_opts['id'] = count
-#       extra_opts['precinct_id'] = 0
-#       extra_opts['state'] = 'IL' # should come from ini
-      
       fp = FileParser(options)
       fp.parse(template)
       
     elif k=='header':
       options['script_start'] = now.strftime('%Y-%m-%dT%H:%M:%S')
-      with open(vip_file,'w+') as w:
+      with open(vip_file,'r+') as w:
         old = w.read() # read everything in the file
         w.seek(0) # rewind
         w.write(template.format(**options)) # write the new line before
