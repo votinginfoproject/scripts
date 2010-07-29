@@ -1,0 +1,3 @@
+# THIS IS CURRENTLY NOT WORKING CODE
+
+Theoretically, this script will create a <acronym title="Voting Information Project">VIP</acronym> feed. However, this script has not been error-checked, compiled or tested. Therefore, until proper testing is done, use at your own risk.
