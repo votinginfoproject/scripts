@@ -1,11 +1,10 @@
 using System;
+using System.Configuration;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Text;
 using System.Xml;
-using System.Data.OleDb;
-using System.Data.Odbc;
 using Oracle.DataAccess.Client;
 
 namespace Vip {
@@ -32,14 +31,14 @@ namespace Vip {
         }
 
         private NameValueCollection GetConfigSection (string sSection) {
-            return ConfigurationSetting.GetConfig(sSection) as NameValueCollection;
+            return ConfigurationSettings.GetConfig(sSection) as NameValueCollection;
         }
 
         private XmlWriter CreateXmlWriter (NameValueCollection oXmlConfig, String sOutputFile) {
             XmlWriterSettings xmlSettings = new XmlWriterSettings();
             xmlSettings.Indent = oXmlConfig.Get("Indent");
             xmlSettings.IndentChars = oXmlConfig.Get("IndentChars");
-            xmlSettings.ConformanceLevel = oXmlConfig.Get("ConformanceLevel");
+            xmlSettings.ConformanceLevel = oXmlConfig.Get("ConformanceLevel")=="Fragment" ? ConformanceLevel.Fragment : ConformanceLevel.Document;
 
             return XmlWriter.Create(sOutputFile, xmlSettings);
         }
@@ -55,7 +54,7 @@ namespace Vip {
             oXml.WriteEndElement();
 
             oXml.WriteStartElement("source");
-            oXml.WriteAttributeString("id", 1);
+            oXml.WriteAttributeString("id", "1");
             oXml.WriteElementString("vip_id", oVipConfig.Get("StateFIPS"));
             oXml.WriteElementString("datetime", oVipConfig.Get("ScriptStart"));
             oXml.WriteElementString("description", oVipConfig.Get("Description"));
@@ -66,7 +65,7 @@ namespace Vip {
         private void WriteElementFromConfig (String sElementName, NameValueCollection oConfig, XmlWriter oXml) {
             oXml.WriteStartElement(sElementName);
 
-            if (oConfig.Get("id")) {
+            if (oConfig.ContainsKey("id")) {
                 oXml.WriteAttributeString("id", oConfig.Get("id"));
                 // clear the id so it's not used in the loop
                 oConfig.Remove("id");
@@ -198,7 +197,7 @@ namespace Vip {
             NameValueCollection oVipConfig = GetConfigSection("vipSettings");
 
             // add the scriptStart time to the config and pass it into the header function
-            oVipConfig.Add("ScriptStart", scriptStart.ToString("yyyy-MM-ddTHH:mm:ss"));
+            oVipConfig.Add("ScriptStart", _oScriptStart.ToString("yyyy-MM-ddTHH:mm:ss"));
 
             _sOutputFileName = String.Format("{0}vipFeed-{1}-{2}.xml",
                                              oVipConfig.Get("FilePath"),
