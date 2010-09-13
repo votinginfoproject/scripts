@@ -235,11 +235,34 @@ namespace Builder {
 
         public static void Main(String[] args) {
             DateTime oScriptStart = DateTime.UtcNow;
-            NameValueCollection oAppSettings = ConfigurationManager.AppSettings;
+            /*NameValueCollection oAppSettings = ConfigurationManager.AppSettings;
             NameValueCollection oDbSettings = ConfigurationManager.GetSection("dbSettings") as NameValueCollection;
             NameValueCollection oVipSettings = ConfigurationManager.GetSection("vipSettings") as NameValueCollection;
             NameValueCollection oXmlSettings = ConfigurationManager.GetSection("xmlWriterSettings") as NameValueCollection;
-            NameValueCollection oElectionAdminSettings = ConfigurationManager.GetSection("electionOfficial") as NameValueCollection;
+            NameValueCollection oElectionAdminSettings = ConfigurationManager.GetSection("electionOfficial") as NameValueCollection;*/
+            
+            NameValueCollection oDbSettings = new NameValueCollection();
+            NameValueCollection oVipSettings = new NameValueCollection();
+            NameValueCollection oXmlSettings = new NameValueCollection();
+            NameValueCollection oElectionAdminSettings = new NameValueCollection();
+
+            oDbSettings.Add("Host", "HOST");
+            oDbSettings.Add("Port", "POST");
+            oDbSettings.Add("User", "USER");
+            oDbSettings.Add("Password", "PASSWORD");
+            
+            oVipSettings.Add("FilePath","C:\\");
+            oVipSettings.Add("SchemaURL", "http://election-info-standard.googlecode.com/files/vip_spec_v2.2xsd");
+            oVipSettings.Add("SchemaVer", "2.2");
+            oVipSettings.Add("StateName", "State");
+            oVipSettings.Add("StateFIPS", "20");
+            oVipSettings.Add("Description", "The Secretary of State is the chief state election official for the state. This feed provides information on registration, advance voting, and the location of polling locations for registered voters in the state.");
+            oVipSettings.Add("OrganizationURL", "http://sos.gov");
+
+            oXmlSettings.Add("Indent", "true");
+            oXmlSettings.Add("IndentChars", "  ");
+            oXmlSettings.Add("ConformanceLevel", "Fragment");
+
             DataConnection oDataConn = new DataConnection(oDbSettings);
             FeedWriter oFeedWriter = new FeedWriter(
                 oScriptStart,
@@ -253,7 +276,7 @@ namespace Builder {
             oFeedWriter.WriteHeader(oVipSettings);
 
             // this may not be necessary if the election_officials are stored in the db
-            oFeedWriter.WriteElementFromConfig("election_official", oElectionAdminSettings);
+            //oFeedWriter.WriteElementFromConfig("election_official", oElectionAdminSettings);
             
             try {
                 using (OracleConnection oConn = oDataConn.DbConnect()) {
