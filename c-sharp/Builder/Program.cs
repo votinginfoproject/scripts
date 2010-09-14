@@ -12,7 +12,7 @@ namespace Builder {
     class FeedWriter {
         private string _sOutputFileNameFormat = "{0}vipFeed-{1}-{2}.xml";
         private string _sFileTimeFormat = "yyyy-MM-ddTHH-mm-ss";
-        private DateTime _oScriptStart;
+        //private DateTime _oScriptStart;
         private XmlWriter _oXmlWriter;
 
         private XmlWriter CreateXmlWriter(NameValueCollection oXmlConfig, String sOutputFile) {
@@ -212,12 +212,13 @@ namespace Builder {
         private string FormatDbConnString() {
             String oradb = "Data Source=(DESCRIPTION="
                 + "(ADDRESS_LIST=(ADDRESS=(PROTOCOL=TCP)(HOST={0})(PORT={1})))"
-                + "(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME=ORCL)));"
-                + "User Id={2};Password={3};";
+                + "(CONNECT_DATA=(SERVER=DEDICATED)(SERVICE_NAME={2})));"
+                + "User Id={3};Password={4};";
 
             return String.Format(oradb,
                 _oDbConfig.Get("Host"),
                 _oDbConfig.Get("Port"),
+                _oDbConfig.Get("Service"),
                 _oDbConfig.Get("User"),
                 _oDbConfig.Get("Pass"));
         }
@@ -246,13 +247,14 @@ namespace Builder {
             NameValueCollection oXmlSettings = new NameValueCollection();
             NameValueCollection oElectionAdminSettings = new NameValueCollection();
 
-            oDbSettings.Add("Host", "HOST");
-            oDbSettings.Add("Port", "POST");
-            oDbSettings.Add("User", "USER");
-            oDbSettings.Add("Password", "PASSWORD");
-            
-            oVipSettings.Add("FilePath","C:\\");
-            oVipSettings.Add("SchemaURL", "http://election-info-standard.googlecode.com/files/vip_spec_v2.2xsd");
+            oDbSettings.Add("Host", "localhost");
+            oDbSettings.Add("Port", "1521");
+            oDbSettings.Add("Service", "VIPFEED");
+            oDbSettings.Add("User", "DBSNMP");
+            oDbSettings.Add("Pass", "m4yN4rd46");
+
+            oVipSettings.Add("FilePath", "C:\\Users\\Jared\\Documents\\projects\\vip\\");
+            oVipSettings.Add("SchemaURL", "http://election-info-standard.googlecode.com/files/vip_spec_v2.2a.xsd");
             oVipSettings.Add("SchemaVer", "2.2");
             oVipSettings.Add("StateName", "State");
             oVipSettings.Add("StateFIPS", "20");
