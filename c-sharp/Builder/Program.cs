@@ -85,10 +85,10 @@ namespace Builder {
                 _oXmlWriter.WriteStartElement("address");
 
                 if (oDataReader["location_name"] != DBNull.Value) {
-                    _oXmlWriter.WriteElementString("location_name", oDataReader["name"].ToString());
+                    _oXmlWriter.WriteElementString("location_name", oDataReader["location_name"].ToString());
                 }
 
-                _oXmlWriter.WriteElementString("line1", oDataReader["address"].ToString());
+                _oXmlWriter.WriteElementString("line1", oDataReader["line1"].ToString());
                 _oXmlWriter.WriteElementString("city", oDataReader["city"].ToString());
                 _oXmlWriter.WriteElementString("state", oDataReader["state"].ToString());
                 _oXmlWriter.WriteElementString("zip", oDataReader["zip"].ToString());
@@ -253,7 +253,7 @@ namespace Builder {
             oDbSettings.Add("User", "DBSNMP");
             oDbSettings.Add("Pass", "m4yN4rd46");
 
-            oVipSettings.Add("FilePath", "C:\\Users\\Jared\\Documents\\projects\\vip\\");
+            oVipSettings.Add("FilePath", "C:\\Users\\Jared\\Documents\\projects\\vip\\feeds\\");
             oVipSettings.Add("SchemaURL", "http://election-info-standard.googlecode.com/files/vip_spec_v2.2a.xsd");
             oVipSettings.Add("SchemaVer", "2.2");
             oVipSettings.Add("StateName", "State");
