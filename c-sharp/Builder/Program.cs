@@ -49,6 +49,7 @@ namespace Builder {
             _oXmlWriter.WriteStartElement("source");
             _oXmlWriter.WriteAttributeString("id", "1");
             _oXmlWriter.WriteElementString("vip_id", oVipConfig.Get("StateFIPS"));
+            _oXmlWriter.WriteElementString("name", oVipConfig.Get("SourceName"));
             _oXmlWriter.WriteElementString("datetime", oVipConfig.Get("ScriptStart"));
             _oXmlWriter.WriteElementString("description", oVipConfig.Get("Description"));
             _oXmlWriter.WriteElementString("organization_url", oVipConfig.Get("OrganizationURL"));
@@ -251,13 +252,15 @@ namespace Builder {
             oDbSettings.Add("Port", "1521");
             oDbSettings.Add("Service", "VIPFEED");
             oDbSettings.Add("User", "DBSNMP");
-            oDbSettings.Add("Pass", "m4yN4rd46");
+            oDbSettings.Add("Pass", "P4SSW0RD");
 
             oVipSettings.Add("FilePath", "C:\\Users\\Jared\\Documents\\projects\\vip\\feeds\\");
             oVipSettings.Add("SchemaURL", "http://election-info-standard.googlecode.com/files/vip_spec_v2.2a.xsd");
             oVipSettings.Add("SchemaVer", "2.2");
             oVipSettings.Add("StateName", "State");
+            oVipSettings.Add("ScriptStart", oScriptStart.ToString("yyyy-MM-ddTHH:mm:ss"));
             oVipSettings.Add("StateFIPS", "20");
+            oVipSettings.Add("SourceName", "State of Somewhere");
             oVipSettings.Add("Description", "The Secretary of State is the chief state election official for the state. This feed provides information on registration, advance voting, and the location of polling locations for registered voters in the state.");
             oVipSettings.Add("OrganizationURL", "http://sos.gov");
 
