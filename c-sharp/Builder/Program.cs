@@ -130,7 +130,7 @@ namespace Builder {
                     _oXmlWriter.WriteElementString("street_direction", oDataReader["street_direction"].ToString());
                 }
 
-                _oXmlWriter.WriteElementString("street_name", oDataReader["street_name"].ToString());
+                _oXmlWriter.WriteElementString("street_name", oDataReader["street_name"].ToString().Replace("\"",""));
 
                 if (oDataReader["street_suffix"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("street_suffix", oDataReader["street_suffix"].ToString());
