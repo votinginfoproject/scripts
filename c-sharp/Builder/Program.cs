@@ -108,6 +108,9 @@ namespace Builder {
         }
 
         public void WriteStreetSegments(OracleCommand oCmd) {
+            String start_house = "";
+            String end_house = "";
+
             oCmd.CommandText = "select * from Table";
             oCmd.CommandType = CommandType.Text;
 
@@ -117,8 +120,20 @@ namespace Builder {
                 _oXmlWriter.WriteStartElement("street_segment");
                 _oXmlWriter.WriteAttributeString("id", oDataReader["id"].ToString());
 
-                _oXmlWriter.WriteElementString("start_house_number", oDataReader["start_house_number"].ToString());
-                _oXmlWriter.WriteElementString("end_house_number", oDataReader["end_house_number"].ToString());
+                if(oDataReader["start_house_number"] == DBNull.Value || oDataReader["start_house_number"].ToString() == "") {
+                    start_house = "1";
+                } else {
+                    start_house = oDataReader["start_house_number"].ToString();
+                }
+
+                if (oDataReader["end_house_number"] == DBNull.Value || oDataReader["end_house_number"].ToString() == "") {
+                    end_house = "999999";
+                } else {
+                    end_house = oDataReader["end_house_number"].ToString();
+                }
+
+                _oXmlWriter.WriteElementString("start_house_number", start_house);
+                _oXmlWriter.WriteElementString("end_house_number", end_house);
 
                 if (oDataReader["odd_even_both"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("odd_even_both", oDataReader["odd_even_both"].ToString());
