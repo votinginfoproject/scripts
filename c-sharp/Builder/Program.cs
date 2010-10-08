@@ -34,6 +34,7 @@ namespace Builder {
 
         public void WriteEndElement() {
             _oXmlWriter.WriteEndElement();
+	    _oXmlWriter.Flush();
         }
 
         public void WriteHeader(NameValueCollection oVipConfig) {
@@ -41,23 +42,23 @@ namespace Builder {
             _oXmlWriter.WriteAttributeString("xsi", "noNamespaceSchemaLocation", null, oVipConfig.Get("SchemaURL"));
             _oXmlWriter.WriteAttributeString("schemaVersion", oVipConfig.Get("SchemaVer"));
 
-            _oXmlWriter.WriteStartElement("state");
+            WriteStartElement("state");
             _oXmlWriter.WriteAttributeString("id", oVipConfig.Get("StateFIPS"));
             _oXmlWriter.WriteElementString("name", oVipConfig.Get("StateName"));
-            _oXmlWriter.WriteEndElement();
+            WriteEndElement();
 
-            _oXmlWriter.WriteStartElement("source");
+            WriteStartElement("source");
             _oXmlWriter.WriteAttributeString("id", "1");
             _oXmlWriter.WriteElementString("vip_id", oVipConfig.Get("StateFIPS"));
             _oXmlWriter.WriteElementString("name", oVipConfig.Get("SourceName"));
             _oXmlWriter.WriteElementString("datetime", oVipConfig.Get("ScriptStart"));
             _oXmlWriter.WriteElementString("description", oVipConfig.Get("Description"));
             _oXmlWriter.WriteElementString("organization_url", oVipConfig.Get("OrganizationURL"));
-            _oXmlWriter.WriteEndElement();
+            WriteEndElement();
         }
 
         public void WriteElementFromConfig(String sElementName, NameValueCollection oConfig) {
-            _oXmlWriter.WriteStartElement(sElementName);
+            WriteStartElement(sElementName);
 
             try {
                 _oXmlWriter.WriteAttributeString("id", oConfig.Get("id"));
@@ -71,7 +72,7 @@ namespace Builder {
                 _oXmlWriter.WriteElementString(s, oConfig[s]);
             }
 
-            _oXmlWriter.WriteEndElement();
+            WriteEndElement();
         }
 
         public void WritePollingPlaces(OracleCommand oCmd) {
@@ -81,9 +82,9 @@ namespace Builder {
             OracleDataReader oDataReader = oCmd.ExecuteReader();
 
             while (oDataReader.Read()) {
-                _oXmlWriter.WriteStartElement("polling_location");
+                WriteStartElement("polling_location");
                 _oXmlWriter.WriteAttributeString("id", oDataReader["id"].ToString());
-                _oXmlWriter.WriteStartElement("address");
+                WriteStartElement("address");
 
                 if (oDataReader["location_name"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("location_name", oDataReader["location_name"].ToString());
@@ -93,7 +94,7 @@ namespace Builder {
                 _oXmlWriter.WriteElementString("city", oDataReader["city"].ToString());
                 _oXmlWriter.WriteElementString("state", oDataReader["state"].ToString());
                 _oXmlWriter.WriteElementString("zip", oDataReader["zip"].ToString());
-                _oXmlWriter.WriteEndElement();
+                WriteEndElement();
 
                 if (oDataReader["directions"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("directions", oDataReader["directions"].ToString());
@@ -103,7 +104,7 @@ namespace Builder {
                     _oXmlWriter.WriteElementString("polling_hours", oDataReader["polling_hours"].ToString());
                 }
 
-                _oXmlWriter.WriteEndElement();
+                WriteEndElement();
             }
         }
 
@@ -117,7 +118,7 @@ namespace Builder {
             OracleDataReader oDataReader = oCmd.ExecuteReader();
 
             while (oDataReader.Read()) {
-                _oXmlWriter.WriteStartElement("street_segment");
+                WriteStartElement("street_segment");
                 _oXmlWriter.WriteAttributeString("id", oDataReader["id"].ToString());
 
                 if(oDataReader["start_house_number"] == DBNull.Value || oDataReader["start_house_number"].ToString() == "") {
@@ -139,7 +140,7 @@ namespace Builder {
                     _oXmlWriter.WriteElementString("odd_even_both", oDataReader["odd_even_both"].ToString());
                 }
 
-                _oXmlWriter.WriteStartElement("non_house_address");
+                WriteStartElement("non_house_address");
 
                 if (oDataReader["street_direction"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("street_direction", oDataReader["street_direction"].ToString());
@@ -162,11 +163,11 @@ namespace Builder {
                     _oXmlWriter.WriteElementString("zip", oDataReader["zip"].ToString());
                 }
 
-                _oXmlWriter.WriteEndElement(); // end non_house_address
+                WriteEndElement(); // end non_house_address
 
                 _oXmlWriter.WriteElementString("precinct_id", oDataReader["precinct_id"].ToString());
 
-                _oXmlWriter.WriteEndElement(); // end street_segment
+                WriteEndElement(); // end street_segment
             }
         }
 
@@ -182,7 +183,7 @@ namespace Builder {
             OracleDataReader oPollingReader;
 
             while (oDataReader.Read()) {
-                _oXmlWriter.WriteStartElement("precinct");
+                WriteStartElement("precinct");
                 _oXmlWriter.WriteAttributeString("id", oDataReader["id"].ToString());
                 _oXmlWriter.WriteElementString("name", oDataReader["name"].ToString());
                 _oXmlWriter.WriteElementString("locality_id", oDataReader["locality_id"].ToString());
@@ -196,7 +197,7 @@ namespace Builder {
                     _oXmlWriter.WriteElementString("polling_location_id", oDataReader["polling_location_id"].ToString());
                 }
                 
-                _oXmlWriter.WriteEndElement();
+                WriteEndElement();
             }
         }
 
@@ -207,12 +208,12 @@ namespace Builder {
             OracleDataReader oDataReader = oCmd.ExecuteReader();
 
             while (oDataReader.Read()) {
-                _oXmlWriter.WriteStartElement("locality");
+                WriteStartElement("locality");
                 _oXmlWriter.WriteAttributeString("id", oDataReader["id"].ToString());
                 _oXmlWriter.WriteElementString("name", oDataReader["name"].ToString());
                 _oXmlWriter.WriteElementString("state_id", oDataReader["state_id"].ToString());
                 _oXmlWriter.WriteElementString("type", oDataReader["type"].ToString());
-                _oXmlWriter.WriteEndElement();
+                WriteEndElement();
             }
         }
 
