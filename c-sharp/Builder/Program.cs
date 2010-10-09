@@ -10,9 +10,7 @@ using Oracle.DataAccess.Client;
 
 namespace Builder {
     class FeedWriter {
-        private string _sOutputFileNameFormat = "{0}vipFeed-{1}-{2}.xml";
-        private string _sFileTimeFormat = "yyyy-MM-ddTHH-mm-ss";
-        //private DateTime _oScriptStart;
+        private string _sOutputFileNameFormat = "{0}vipFeed-{1}.xml";
         private XmlWriter _oXmlWriter;
 
         private XmlWriter CreateXmlWriter(NameValueCollection oXmlConfig, String sOutputFile) {
@@ -24,8 +22,8 @@ namespace Builder {
             return XmlWriter.Create(sOutputFile, xmlSettings);
         }
 
-        private string FormatFileName(string sFilePath, string sFIPS, DateTime oScriptStart) {
-            return String.Format(_sOutputFileNameFormat,sFilePath,sFIPS,oScriptStart.ToString(_sFileTimeFormat));
+        private string FormatFileName(string sFilePath, string sFIPS) {
+            return String.Format(_sOutputFileNameFormat,sFilePath,sFIPS);
         }
 
         public void WriteStartElement(string sElementName) {
@@ -217,8 +215,8 @@ namespace Builder {
             }
         }
 
-        public FeedWriter(DateTime oScriptStart, string sFilePath, string sFIPS, NameValueCollection oWriterSettings) {
-            _oXmlWriter = CreateXmlWriter(oWriterSettings,FormatFileName(sFilePath,sFIPS,oScriptStart));
+        public FeedWriter(string sFilePath, string sFIPS, NameValueCollection oWriterSettings) {
+            _oXmlWriter = CreateXmlWriter(oWriterSettings,FormatFileName(sFilePath,sFIPS));
         }
     }
 
@@ -286,7 +284,6 @@ namespace Builder {
 
             DataConnection oDataConn = new DataConnection(oDbSettings);
             FeedWriter oFeedWriter = new FeedWriter(
-                oScriptStart,
                 oVipSettings.Get("FilePath"),
                 oVipSettings.Get("StateFIPS"),
                 oXmlSettings
