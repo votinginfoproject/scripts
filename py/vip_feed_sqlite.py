@@ -12,10 +12,24 @@ from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
 def main():
+  """Set it off"""
   now = datetime.now()
-  vip_file = "{0}vipFeed-{1}.xml".format('/Users/jared/Documents/projects/vip/data/ms/','28')
+  usage = "%prog [options] arg"
+  version = "%prog .1"
+  write_mode = 'a'
   
-  setupdb('/tmp/vip_data_co.db')
+  parser = OptionParser(usage=usage, version=version, option_list=create_options_list())
+
+  (opts,args) = parser.parse_args()
+  
+  if os.path.isfile(opts.config):
+    # parse config file
+    config = SafeConfigParser()
+    config.read(opts.config)
+  
+    setupdb('/tmp/vip_data_co.db')
+  
+  vip_file = "{0}vipFeed-{1}.xml".format(config.get('Main','output_dir'),config.get('Header','state_fips'))
   
   with open(vip_file,'w') as w:
     w.write('<?xml version="1.0" standalone="yes"?>\n<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.2.xsd" schemaVersion="2.2">\n')
@@ -275,7 +289,7 @@ def create_street_segments(w):
   datastore = Datastore('/tmp/vip_data_co.db')
   cursor = datastore.connect()
   
-  cursor.execute("SELECT * FROM Street_Segment WHERE street_name IS NOT NULL")
+  cursor.execute("SELECT * FROM Street_Segment, Precinct WHERE Street_Segment.street_name IS NOT NULL AND Street_Segment.precinct_id=Precinct.id")
   
   for row in cursor:
     root = ET.Element("street_segment",id=unicode(row['id']))
@@ -366,10 +380,35 @@ def create_polling_locations(w):
     state = ET.SubElement(address,"state")
     state.text = row['state']
     zipcode = ET.SubElement(address,"zip")
+    zipcode.text = row['zip']
     
     w.write(ET.tostring(root))
   
   datastore.close()
+
+def config_section_as_dict(config_items):
+  """Changes the section list of tuples to a dictionary"""
+  data_dict = {}
   
+  for key,val in config_items:
+    data_dict[key] = val
+  
+  return data_dict
+
+def create_options_list():
+  """Creates the optionsparser options list"""
+  option_list = [
+    make_option("-v", "--verbose", dest="verbose",
+      default=False, action="store_true",
+      help="Write status messages to stdout"),
+
+    make_option("--config", type="string",
+      dest="config", default="config.ini",
+      help="Specifies a config file",
+      metavar="CONFIG_FILE"),
+  ]
+  
+  return option_list
+
 if __name__ == "__main__":
   main()

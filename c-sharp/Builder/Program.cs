@@ -192,7 +192,37 @@ namespace Builder {
 
                 // if there is only one polling place per precinct, this may be unnecessary
                 while (oPollingReader.Read()) {
-                    _oXmlWriter.WriteElementString("polling_location_id", oDataReader["polling_location_id"].ToString());
+                    _oXmlWriter.WriteElementString("polling_location_id", oPollingReader["polling_location_id"].ToString());
+                }
+                
+                WriteEndElement();
+            }
+        }
+
+        public void WritePrecinctsSplits(OracleCommand oCmd) {
+            OracleCommand oCmdPolling = new OracleCommand();
+            oCmdPolling.Connection = oCmd.Connection;
+            oCmdPolling.CommandType = CommandType.Text;
+
+            oCmd.CommandText = "select * from Table";
+            oCmd.CommandType = CommandType.Text;
+
+            OracleDataReader oDataReader = oCmd.ExecuteReader();
+            OracleDataReader oPollingReader;
+
+            while (oDataReader.Read()) {
+                WriteStartElement("precinct_split");
+                _oXmlWriter.WriteAttributeString("id", oDataReader["id"].ToString());
+                _oXmlWriter.WriteElementString("name", oDataReader["name"].ToString());
+                _oXmlWriter.WriteElementString("precinct_id", oDataReader["precinct_id"].ToString());
+
+                // based on relationship between polling place and precinct
+                oCmdPolling.CommandText = "select * from Table where id=";
+                oPollingReader = oCmdPolling.ExecuteReader();
+
+                // if there is only one polling place per precinct, this may be unnecessary
+                while (oPollingReader.Read()) {
+                    _oXmlWriter.WriteElementString("polling_location_id", oPollingReader["polling_location_id"].ToString());
                 }
                 
                 WriteEndElement();
@@ -306,6 +336,7 @@ namespace Builder {
                     oFeedWriter.WritePollingPlaces(oCmd);
                     oFeedWriter.WriteStreetSegments(oCmd);
                     oFeedWriter.WritePrecincts(oCmd);
+		    oFeedWriter.WritePrecinctSplits(oCmd);
                     oFeedWriter.WriteLocalities(oCmd);
                 }
 

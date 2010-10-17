@@ -194,7 +194,7 @@ state_id INTEGER REFERENCES State (id)
 );""")
 
 def load_data(cursor):
-  file_tmpl = '/Users/jared/Documents/projects/vip/data/ms/{0}.txt'
+  file_tmpl = '/Users/jared/Documents/projects/vip/data/co/{0}.txt'
   
   possible_data = (
     'source',
@@ -213,7 +213,7 @@ def load_data(cursor):
     if os.path.exists(file_tmpl.format(i)):
       with open(file_tmpl.format(i),'r') as r:
         print "Parsing and loading data from {0}".format(i)
-        reader = DictReader(r, delimiter='\t')
+        reader = DictReader(r, delimiter='|')
         
         try:
           for line in reader:
@@ -224,7 +224,7 @@ def load_data(cursor):
                   line['VIP_ID'],
                   line['ID'],
                   line['DESCRIPTION'],
-                  28,
+                  8,
                 )
               )
               
@@ -264,9 +264,9 @@ def load_data(cursor):
                 "INSERT OR IGNORE INTO Election(id,date,election_type,state_id,statewide,registration_info) VALUES (?,?,?,?,?,?)",
                 (
                   line['ID'],
-                  datetime.strptime(line.get('DATE'), '%m/%d/%Y').strftime('%Y-%m-%d'),
+                  datetime.strptime(line.get('DATE'), '%Y-%m-%d').strftime('%Y-%m-%d'),
                   line.get('ELECTION_TYPE', "General"),
-                  line.get('STATE_ID', 28),
+                  line.get('STATE_ID', 8),
                   line.get('STATEWIDE', "Yes"),
                   line.get('REGISTRATION_INFO', None),
                 )
@@ -291,7 +291,7 @@ def load_data(cursor):
                 (
                   line['ID'],
                   line.get('NAME'),
-                  line.get('STATE_ID', 28),
+                  line.get('STATE_ID', 8),
                   line.get('TYPE'),
                   line.get('ELECTION_ADMINISTRATION_ID'),
                 )
