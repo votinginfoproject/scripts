@@ -6,8 +6,9 @@ import sqlite3
 import xml.etree.cElementTree as ET
 from db.datastore import Datastore
 from db.setupdb import setupdb
-from csv import DictReader,Error as CSVError
 from datetime import datetime, tzinfo
+from optparse import OptionParser,make_option
+from ConfigParser import SafeConfigParser
 from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
@@ -26,31 +27,50 @@ def main():
     # parse config file
     config = SafeConfigParser()
     config.read(opts.config)
+  else:
+    sys.exit("Please specify a valid config file")
   
-    setupdb('/tmp/vip_data_co.db')
+  database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
+  setupdb(database, config)
+  datastore = Datastore(database)
+  cursor = datastore.connect()
   
-  vip_file = "{0}vipFeed-{1}.xml".format(config.get('Main','output_dir'),config.get('Header','state_fips'))
+  vip_file = "{0}vipFeed-{1}.xml".format(config.get('Main','output_dir'),config.get('Main','fips'))
   
   with open(vip_file,'w') as w:
-    w.write('<?xml version="1.0" standalone="yes"?>\n<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.2.xsd" schemaVersion="2.2">\n')
+    w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.2a.xsd" schemaVersion="2.2">
+""")
     
-    create_header(w,now)
-    create_election(w)
-    create_election_admins(w)
-    create_election_officials(w)
-    create_localities(w)
-    create_precincts(w)
-    create_precinct_splits(w)
-    create_street_segments(w)
-    create_polling_locations(w)
+    create_header(w, cursor, now)
+    create_election(w, cursor)
+    create_election_admins(w, cursor)
+    create_election_officials(w, cursor)
+    create_localities(w, cursor, config)
+    create_precincts(w, cursor, config)
+    create_precinct_splits(w, cursor, config)
+    create_street_segments(w, cursor, config)
+    create_polling_locations(w, cursor, config)
     
     w.write('</vip_object>')
 
-def create_header(w,now):
+def create_header(w, cursor, now):
   print "Creating source and state elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
-  cursor.execute("SELECT VIP_Info.source_id AS source_id, State.name AS state_name, VIP_Info.id AS vip_id, ? AS datetime, description, organization_url, election_administration_id FROM VIP_Info, State WHERE State.id=VIP_Info.state_id",(now.strftime('%Y-%m-%dT%H:%M:%S'),))
+  
+  cursor.execute("""SELECT
+    VIP_Info.source_id AS source_id,
+    State.name AS state_name,
+    VIP_Info.id AS vip_id,
+    ? AS datetime,
+    description,
+    organization_url,
+    election_administration_id
+  FROM
+    VIP_Info,
+    State
+  WHERE
+    State.id=VIP_Info.state_id
+  """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
 
   row = cursor.fetchone()
 
@@ -67,10 +87,8 @@ def create_header(w,now):
   </state>
 """.format(**row))
 
-def create_election(w):
+def create_election(w, cursor):
   print "Creating election elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
   
   cursor.execute("SELECT * FROM Election")
   
@@ -93,14 +111,10 @@ def create_election(w):
     registration_info.text = unicode(row['registration_info'])
     
     w.write(ET.tostring(root))
-    
-  datastore.close()
   
-def create_election_admins(w):
+def create_election_admins(w, cursor):
   """Writes all election administration information"""
   print "Creating election administration elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
   
   cursor.execute("SELECT * FROM Election_Administration")
 
@@ -150,14 +164,10 @@ def create_election_admins(w):
       where_do_i_vote.text = row['where_do_i_vote_url']
     
     w.write(ET.tostring(root))
-  
-  datastore.close()
 
-def create_election_officials(w):
+def create_election_officials(w, cursor):
   """Writes all election official information"""
   print "Creating election official elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
   
   cursor.execute("SELECT * FROM Election_Official")
 
@@ -185,14 +195,17 @@ def create_election_officials(w):
       
     w.write(ET.tostring(root))
   
-  datastore.close()
-  
-def create_localities(w):
+def create_localities(w, cursor, config):
   print "Creating locality elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
-  
-  cursor.execute("SELECT * FROM Locality")
+    
+  cursor.execute("""SELECT
+    ?||id AS id,
+    name,
+    state_id,
+    type,
+    election_administration_id
+  FROM Locality""",
+  (config.get('Locality','locality_prefix'),))
   
   for row in cursor:
     root = ET.Element("locality",id=unicode(row['id']))
@@ -211,14 +224,10 @@ def create_localities(w):
       election_administration_id.text = unicode(row['election_administration_id'])
     
     w.write(ET.tostring(root))
-    
-  datastore.close()
   
-def create_precincts(w):
+def create_precincts(w, cursor, config):
   """Writes all election administration information"""
   print "Creating precinct elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
   
   mem = Datastore(':memory:')
   c = mem.connect()
@@ -229,16 +238,31 @@ precinct_id INTEGER,
 PRIMARY KEY(polling_location_id, precinct_id)
 )""")
 
-  cursor.execute("SELECT * FROM Precinct_Polling")
+  cursor.execute("""SELECT
+    polling_location_id AS polling_location_id,
+    precinct_id AS precinct_id
+  FROM Precinct_Polling"""
+  )
   
   for row in cursor:
     c.execute("INSERT INTO Precinct_Polling VALUES (?,?)",(list(row)))
   
   mem.commit()
   
-  cursor.execute("SELECT * FROM Precinct WHERE locality_id IS NOT NULL AND name IS NOT NULL")
+  cursor.execute("""SELECT
+    id AS original_id,
+    ?||id AS id,
+    name,
+    ?||locality_id AS locality_id,
+    mail_only
+    FROM Precinct WHERE locality_id IS NOT NULL AND name IS NOT NULL""",
+    (
+      config.get('Precinct', 'precinct_prefix'),
+      config.get('Locality', 'locality_prefix'),
+    )
+  )
   
-  for row in cursor:    
+  for row in cursor:
     root = ET.Element("precinct",id=unicode(row['id']))
     name = ET.SubElement(root,"name")
     name.text = row['name']
@@ -254,22 +278,61 @@ PRIMARY KEY(polling_location_id, precinct_id)
         w.write(ET.tostring(root))
         continue
       else:
-        c.execute("SELECT polling_location_id FROM Precinct_Polling WHERE precinct_id=?",(row['id'],))
+        c.execute("""SELECT
+            ?||polling_location_id AS polling_location_id
+          FROM Precinct_Polling
+          WHERE precinct_id=?""",
+          (
+            config.get('Polling_Location', 'polling_prefix'),
+            row['original_id'],
+          )
+        )
 
         for p in c:
           polling_location_id = ET.SubElement(root,"polling_location_id")
           polling_location_id.text = unicode(p['polling_location_id'])
     
     w.write(ET.tostring(root))
-  
-  datastore.close()
 
-def create_precinct_splits(w):
+def create_precinct_splits(w, cursor, config):
   print "Creating precinct split elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
   
-  cursor.execute("SELECT * FROM Precinct_Split")
+  mem = Datastore(':memory:')
+  c = mem.connect()
+  c.execute("""CREATE TABLE IF NOT EXISTS Split_Polling
+(
+polling_location_id INTEGER,
+split_id INTEGER,
+PRIMARY KEY(polling_location_id, split_id)
+)""")
+
+  cursor.execute("""SELECT
+    polling_location_id AS polling_location_id,
+    split_id AS precinct_split_id
+  FROM Split_Polling"""
+  )
+  
+  for row in cursor:
+    c.execute("INSERT INTO Split_Polling VALUES (?,?)",(list(row)))
+  
+  mem.commit()
+  
+  cursor.execute("""SELECT
+    ps.id AS original_id,
+    ?||ps.id AS id,
+    ps.name,
+    mail_only,
+    ?||precinct_id AS precinct_id
+    FROM
+      Precinct_Split ps,
+      Precinct p
+    WHERE
+      p.id=ps.precinct_id""",
+    (
+      config.get('Precinct_Split','split_prefix'),
+      config.get('Precinct','precinct_prefix'),
+    )
+  )
   
   for row in cursor:
     root = ET.Element("precinct_split",id=unicode(row['id']))
@@ -280,16 +343,62 @@ def create_precinct_splits(w):
     precinct_id = ET.SubElement(root,"precinct_id")
     precinct_id.text = unicode(row['precinct_id'])
     
+    if row['mail_only'] is not None and len(row['mail_only'])>0:      
+      if row['mail_only']=='Yes':
+        w.write(ET.tostring(root))
+        continue
+        
+      else:
+        c.execute("""SELECT
+            ?||polling_location_id AS polling_location_id
+          FROM Split_Polling
+          WHERE split_id=?""",
+          (
+            config.get('Polling_Location', 'polling_prefix'),
+            row['original_id'],
+          )
+        )
+
+        for p in c:
+          polling_location_id = ET.SubElement(root,"polling_location_id")
+          polling_location_id.text = unicode(p['polling_location_id'])
+    
     w.write(ET.tostring(root))
     
-  datastore.close()
-
-def create_street_segments(w):
+def create_street_segments(w, cursor, config):
   print "Creating street segment elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
   
-  cursor.execute("SELECT * FROM Street_Segment, Precinct WHERE Street_Segment.street_name IS NOT NULL AND Street_Segment.precinct_id=Precinct.id")
+  cursor.execute("""SELECT
+      ?||s.id as id,
+      start_house_number,
+      end_house_number,
+      CASE
+        WHEN odd_even_both='O' THEN 'Odd'
+        WHEN odd_even_both='E' THEN 'Even'
+        WHEN odd_even_both='A' THEN 'Both'
+        ELSE odd_even_both
+      END AS odd_even_both,
+      start_apartment_number,
+      end_apartment_number,
+      street_direction,
+      street_name,
+      street_suffix,
+      address_direction,
+      state,
+      city,
+      zip,
+      ?||s.precinct_id AS precinct_id,
+      ?||s.precinct_split_id AS precinct_split_id
+    FROM
+      Street_Segment AS s
+    WHERE
+      s.street_name IS NOT NULL""",
+    (
+      config.get('Street_Segment','street_prefix'),    
+      config.get('Precinct','precinct_prefix'),
+      config.get('Precinct_Split','split_prefix'),
+    )
+  )
   
   for row in cursor:
     root = ET.Element("street_segment",id=unicode(row['id']))
@@ -355,14 +464,50 @@ def create_street_segments(w):
 
     w.write(ET.tostring(root))
   
-  datastore.close()
-  
-def create_polling_locations(w):
+def create_polling_locations(w, cursor, config):
   print "Creating polling place elements..."
-  datastore = Datastore('/tmp/vip_data_co.db')
-  cursor = datastore.connect()
-  
-  cursor.execute("SELECT * FROM Polling_Location WHERE line1 IS NOT NULL")
+
+  cursor.execute("""SELECT
+    ?||id AS id,
+    location_name,
+    TRIM(line1) AS line1,
+    city,
+    ? AS state,
+    zip
+  FROM Polling_Location
+  WHERE
+    line1 IS NOT NULL AND
+    line1!=?""",
+    (
+      config.get('Polling_Location','polling_prefix'),
+      config.get('Main', 'state_abbreviation'),
+      '',
+    )
+  )  
+#   cursor.execute("""SELECT
+#     ?||id AS id,
+#     location_name,
+#     TRIM(line1) AS line1,
+#     city,
+#     CASE
+#       WHEN state=? THEN ?
+#       WHEN state IS NULL THEN ?
+#       WHEN state='' THEN ?
+#     END AS state,
+#     zip
+#   FROM Polling_Location
+#   WHERE
+#     line1 IS NOT NULL AND
+#     line1!=?""",
+#     (
+#       config.get('Polling_Location','polling_prefix'),
+#       config.get('Main', 'state_name'),
+#       config.get('Main', 'state_abbreviation'),
+#       config.get('Main', 'state_abbreviation'),
+#       config.get('Main', 'state_abbreviation'),
+#       '',
+#     )
+#   )
   
   for row in cursor:
     root = ET.Element("polling_location",id=unicode(row['id']))
@@ -384,8 +529,6 @@ def create_polling_locations(w):
     
     w.write(ET.tostring(root))
   
-  datastore.close()
-
 def config_section_as_dict(config_items):
   """Changes the section list of tuples to a dictionary"""
   data_dict = {}
