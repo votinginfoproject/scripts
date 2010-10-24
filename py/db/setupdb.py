@@ -386,10 +386,6 @@ def load_data(cursor, config):
               )
               
             elif i=='locality':
-              # SC specific code...find way to work in
-              if config.get('Main','state_abbreviation')=='SC':
-                line['ID'], line['NAME'] = get_locality(int(line['ID'].strip(),10)*2 - 1, config.get('Main','fips'))
-                
               cursor.execute(
                 "INSERT OR IGNORE INTO Locality(id,name,state_id,type,election_administration_id) VALUES (?,?,?,?,?)",
                 (
@@ -402,9 +398,6 @@ def load_data(cursor, config):
               )
             
             elif i=='polling_location':
-              if config.get('Main','state_abbreviation')=='SC':
-                get_precinct_info
-
               cursor.execute(
                 "INSERT OR IGNORE INTO Polling_Location(id,location_name,line1,city,state,zip) VALUES (?,?,?,?,?,?)",
                 (
