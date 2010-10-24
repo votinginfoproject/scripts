@@ -1,4 +1,4 @@
-import sys
+import sys, re
 import datetime
 import os.path
 import glob
@@ -20,6 +20,13 @@ def setupdb(filepath, config):
   
   create_tables(cursor)
   datastore.commit()
+    
+  ansi = Datastore('/tmp/ansi.db')
+  c = ansi.connect()
+  cleanup(c)
+  load_ansi(c, 'national.txt')
+  ansi.commit()
+  ansi.close()
   
   load_data(cursor, config)
   datastore.commit()
@@ -45,6 +52,8 @@ def cleanup(cursor):
   cursor.execute("DROP TABLE IF EXISTS State")
   cursor.execute("DROP TABLE IF EXISTS Election")
   cursor.execute("DROP TABLE IF EXISTS VIP_Info")
+  cursor.execute("DROP TABLE IF EXISTS Ansi")
+  cursor.execute("DROP TABLE IF EXISTS Ansi_State")
   
 def create_tables(cursor):
   cursor.execute("""CREATE TABLE IF NOT EXISTS Early_Vote_Site
@@ -162,6 +171,7 @@ email TEXT
 (
 id INTEGER PRIMARY KEY,
 name TEXT,
+original_id INTEGER,
 state_id TEXT NOT NULL,
 type TEXT,
 election_administration_id INTEGER REFERENCES Election_Administration (id)
@@ -202,12 +212,26 @@ state_id INTEGER REFERENCES State (id)
 
 def load_ansi(cursor,filename):
   """Loads data from file into the database"""
-  
+  filename = os.path.abspath(filename)
   if os.path.exists(filename):
     with open(filename,'r') as r:
       reader = DictReader(r, delimiter=',')
       
       try:
+        cursor.execute("""CREATE TABLE IF NOT EXISTS Ansi
+          (
+          state_id INTEGER REFERENCES State (id),
+          county_id INTEGER,
+          county_name TEXT,
+          PRIMARY KEY(state_id, county_id)
+          )""")
+          
+        cursor.execute("""CREATE TABLE IF NOT EXISTS Ansi_State
+          (
+          id INTEGER PRIMARY KEY,
+          abbreviation TEXT
+          )""")
+        
         for line in reader:
           cursor.execute(
             "INSERT INTO Ansi(state_id,county_id,county_name) VALUES (?,?,?)",
@@ -231,6 +255,17 @@ def load_ansi(cursor,filename):
   else:
     sys.exit("No data found")
 
+def get_line(r, reader, parser_type):
+  """Generator that determines the parser type and yields the next line"""
+  if parser_type=='csv':
+    line = reader.next()
+  elif parser_type=='regex':
+    line = r.readline()
+    groups = re.match(reader,line).groupdict('')
+    line = groups
+  
+  yield line
+      
 def load_data(cursor, config):
   file_tmpl = '{0}{1}.txt'
   
@@ -253,13 +288,34 @@ def load_data(cursor, config):
     if os.path.exists(filename):
       with open(filename,'r') as r:
         print "Parsing and loading data from {0}".format(i)
-        if config.has_section(i.title()):
-          reader = DictReader(r, delimiter=chr(config.getint(i.title(),'delimiter')), quotechar='"', quoting=QUOTE_MINIMAL)
+        sect = i.title()
+        parser_type = config.get(sect,'parser_type')
+        if config.has_section(sect):
+          if parser_type=='csv':
+            klass = dyn_class(
+              config.get(sect,'parser_module'),
+              config.get(sect,'parser_class')
+            )
+            
+            reader = klass(
+              r,
+              delimiter=chr(config.getint(sect,'delimiter')),
+              quotechar=config.get(sect, 'quotechar'),
+              quoting=QUOTE_MINIMAL
+            )
+          elif parser_type=='regex':
+            reader = re.compile(config.get(sect,'regex'))
+            #reader = DictReader(r, delimiter=chr(config.getint(i.title(),'delimiter')), quotechar='"', quoting=QUOTE_MINIMAL)
         else:
-          reader = DictReader(r, delimiter=chr(config.getint('Parser','delimiter')), quotechar='"', quoting=QUOTE_MINIMAL)
+          reader = DictReader(
+            r,
+            delimiter=chr(config.getint('Parser','delimiter')),
+            quotechar='"',
+            quoting=QUOTE_MINIMAL
+          )
         
         try:
-          for line in reader:
+          for line in get_line(r, reader, parser_type):
             if i=='source':
               cursor.execute(
                 "INSERT INTO VIP_Info(id,source_id,description,state_id) VALUES (?,?,?,?)",
@@ -330,6 +386,10 @@ def load_data(cursor, config):
               )
               
             elif i=='locality':
+              # SC specific code...find way to work in
+              if config.get('Main','state_abbreviation')=='SC':
+                line['ID'], line['NAME'] = get_locality(int(line['ID'].strip(),10)*2 - 1, config.get('Main','fips'))
+                
               cursor.execute(
                 "INSERT OR IGNORE INTO Locality(id,name,state_id,type,election_administration_id) VALUES (?,?,?,?,?)",
                 (
@@ -342,6 +402,9 @@ def load_data(cursor, config):
               )
             
             elif i=='polling_location':
+              if config.get('Main','state_abbreviation')=='SC':
+                get_precinct_info
+
               cursor.execute(
                 "INSERT OR IGNORE INTO Polling_Location(id,location_name,line1,city,state,zip) VALUES (?,?,?,?,?,?)",
                 (
@@ -484,7 +547,40 @@ def update_data(cursor):
   print "Updating Precinct Split data..."
   cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
 
+def get_locality(county_id, state_fips):
+  ds = Datastore('/tmp/ansi.db')
+  c = ds.connect()
+  
+  c.execute(
+    """SELECT state_id, county_id, county_name
+      FROM
+        Ansi
+      WHERE
+        state_id=? AND
+        county_id=?""",
+    (
+      state_fips,
+      county_id,
+    )
+  )
+  
+  row = dict(c.fetchone())
+  id = "".join([str(row['state_id']),str(row['county_id']).rjust(3,'0')])
+  name = row['county_name']
+  ds.close()
+  
+  return (id,name,)
+
+def commit_precinct_data(line):
+  
+  
 def sanitize(line, key):
   """Mostly for sanitizing ids at this point
   May be more useful later."""
   return ''.join(line[key].split(' '))
+
+def dyn_class(modname,classname):
+  """Returns a class of classname from module modname."""
+  module = __import__(modname)
+  klass = getattr(module,classname)
+  return klass

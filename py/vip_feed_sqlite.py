@@ -404,6 +404,7 @@ def create_street_segments(w, cursor, config):
     root = ET.Element("street_segment",id=unicode(row['id']))
     
     if len(unicode(row['start_house_number']))>0 and len(unicode(row['end_house_number']))>0:
+      
       if row['start_house_number']>row['end_house_number']:
         start = unicode(row['end_house_number'])
         end = unicode(row['start_house_number'])
@@ -422,6 +423,7 @@ def create_street_segments(w, cursor, config):
       odd_even_both.text = unicode(row['odd_even_both'])
     
     if row['start_apartment_number'] is not None and row['end_apartment_number'] is not None and len(unicode(row['start_apartment_number']))>0 and len(unicode(row['end_apartment_number']))>0:
+      
       start_apartment_number = ET.SubElement(root,"start_apartment_number")
       start_apartment_number.text = unicode(row['start_apartment_number'])
       
