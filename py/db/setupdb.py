@@ -570,8 +570,6 @@ def get_locality(county_id, state_fips):
   ds.close()
   
   return (id,name,)
-
-def commit_precinct_data(line):
   
   
 def sanitize(line, key):
