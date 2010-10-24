@@ -48,10 +48,13 @@ def main():
     create_election_officials(w, cursor)
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
-    create_precinct_splits(w, cursor, config)
-    create_street_segments(w, cursor, config)
-    create_polling_locations(w, cursor, config)
     
+    if config.has_section('Precinct_Split'):
+      create_precinct_splits(w, cursor, config)
+    
+    create_polling_locations(w, cursor, config)
+    create_street_segments(w, cursor, config)
+        
     w.write('</vip_object>')
 
 def create_header(w, cursor, now):
@@ -73,7 +76,7 @@ def create_header(w, cursor, now):
   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
 
   row = cursor.fetchone()
-
+  
   w.write("""  <source id="{source_id}">
     <name>State of {state_name}</name>
     <vip_id>{vip_id}</vip_id>
@@ -83,7 +86,6 @@ def create_header(w, cursor, now):
   </source>
   <state id="{vip_id}">
     <name>{state_name}</name>
-    <election_administration_id>{election_administration_id}</election_administration_id>
   </state>
 """.format(**row))
 
@@ -432,7 +434,7 @@ def create_street_segments(w, cursor, config):
     
     non_house_address = ET.SubElement(root,"non_house_address")
     
-    if len(row['street_direction'])>0:
+    if row['street_direction'] is not None and len(row['street_direction'])>0:
       street_direction = ET.SubElement(non_house_address,'street_direction')
       street_direction.text = row['street_direction']
     

@@ -69,7 +69,7 @@ voter_services TEXT
 
   cursor.execute("""CREATE TABLE IF NOT EXISTS Polling_Location
 (
-id INTEGER PRIMARY KEY,
+id INTEGER PRIMARY KEY AUTOINCREMENT,
 location_name TEXT,
 line1 TEXT,
 city TEXT,
@@ -258,13 +258,12 @@ def load_ansi(cursor,filename):
 def get_line(r, reader, parser_type):
   """Generator that determines the parser type and yields the next line"""
   if parser_type=='csv':
-    line = reader.next()
+    for line in reader:
+      yield line 
   elif parser_type=='regex':
-    line = r.readline()
-    groups = re.match(reader,line).groupdict('')
-    line = groups
-  
-  yield line
+    for line in r:
+      groups = re.match(reader,line).groupdict('')
+      yield groups
       
 def load_data(cursor, config):
   file_tmpl = '{0}{1}.txt'
@@ -281,6 +280,26 @@ def load_data(cursor, config):
     'precinct_split',
     'street_segment',
   )
+  
+  # set autoincrement value
+  cursor.execute("INSERT INTO Polling_Location(id) VALUES (?)", (5000000,))
+  cursor.execute("DELETE FROM Polling_Location WHERE id=?", (cursor.lastrowid,))
+  
+  # set autoincrement value
+  cursor.execute("""
+    INSERT INTO 
+      Street_Segment(
+        id,
+        start_house_number,
+        end_house_number,
+        street_name,
+        street_suffix,
+        state,
+        city,
+        zip
+      )
+    VALUES (?,?,?,?,?,?,?,?)""", (6000000,0,0,'','','','','',))
+  cursor.execute("DELETE FROM Street_Segment WHERE id=?", (cursor.lastrowid,))
   
   for i in possible_data:
     filename = file_tmpl.format(config.get('Main','data_dir'),i)
@@ -348,7 +367,6 @@ def load_data(cursor, config):
               )
             
             elif i=='state':
-              print line
               cursor.execute(
                 "INSERT INTO State(id,name,election_administration_id,organization_url) VALUES (?,?,?,?)",
                 (
@@ -386,22 +404,26 @@ def load_data(cursor, config):
               )
               
             elif i=='locality':
+               # SC specific code...find way to work in
+              if config.get('Main','state_abbreviation')=='SC':
+                line['LOCALITY_ID'], line['NAME'] = get_locality(int(line['ID'].strip(),10)*2 - 1, config.get('Main','fips'))
+                line['PRECINCT_ID'] = "".join([line['LOCALITY_ID'],line['PRECINCT_ID']])
+
               cursor.execute(
                 "INSERT OR IGNORE INTO Locality(id,name,state_id,type,election_administration_id) VALUES (?,?,?,?,?)",
                 (
-                  line['ID'],
+                  line['LOCALITY_ID'],
                   line.get('NAME'),
                   line.get('STATE_ID', config.get('Main','fips')),
                   line.get('TYPE'),
                   line.get('ELECTION_ADMINISTRATION_ID'),
                 )
               )
-            
-            elif i=='polling_location':
+
               cursor.execute(
                 "INSERT OR IGNORE INTO Polling_Location(id,location_name,line1,city,state,zip) VALUES (?,?,?,?,?,?)",
                 (
-                  line['ID'],
+                  None,
                   line.get('LOCATION_NAME'),
                   line.get('LINE1'),
                   line.get('CITY'),
@@ -410,25 +432,25 @@ def load_data(cursor, config):
                 )
               )
               
-            elif i=='precinct':
+              line['POLLING_LOCATION_ID'] = cursor.lastrowid
+              
               cursor.execute(
                 "INSERT OR IGNORE INTO Precinct(id,name,locality_id,mail_only) VALUES (?,?,?,?)",
                 (
-                  line['ID'],
+                  line['PRECINCT_ID'],
                   line.get('NAME'),
-                  line.get('LOCALITY_ID', config.get('Main','locality_id')),
+                  line.get('LOCALITY_ID'),
                   line.get('MAIL_ONLY',"No"),
                 )
               )
-                
-              if len(line.get('POLLING_LOCATION_ID',""))>0:
-                cursor.execute(
-                  "INSERT OR IGNORE INTO Precinct_Polling(precinct_id,polling_location_id) VALUES (?,?)",
-                  (
-                    line['ID'],
-                    line['POLLING_LOCATION_ID'],
-                  )
+
+              cursor.execute(
+                "INSERT OR IGNORE INTO Precinct_Polling(precinct_id,polling_location_id) VALUES (?,?)",
+                (
+                  line['ID'],
+                  line['POLLING_LOCATION_ID'],
                 )
+              )
               
               if len(line.get('EARLY_VOTE_SITE_ID',""))>0:
                 cursor.execute(
@@ -473,9 +495,34 @@ def load_data(cursor, config):
                 )
             
             elif i=='street_segment':
+              orig = line['PRECINCT_ID']
+              if line['PRECINCT_ID'] is None or line['PRECINCT_ID'].strip()=='':
+                print "None"
+                continue
+              
+              if config.get('Main','state_abbreviation')=='SC':
+                line['LOCALITY_ID'], line['LOCALITY_NAME'] = get_locality(int(line['LOCALITY_ID'].strip(),10)*2 - 1, config.get('Main','fips'))
+                line['PRECINCT_ID'] = "".join([line['LOCALITY_ID'], line['PRECINCT_ID']])
+                
               if len(line.get('PRECINCT_SPLIT_ID',""))>0:
                 line['PRECINCT_SPLIT_ID'] = sanitize(line,'PRECINCT_SPLIT_ID')
               
+              line['STREET_SUFFIX'] = line['STREET_NAME'].split(None)[-1]
+              line['STREET_NAME'] = " ".join(line['STREET_NAME'].split(None)[:-1])
+              
+              if line['STREET_NAME']=='':
+                line['STREET_NAME'] = line['STREET_SUFFIX']
+                line['STREET_SUFFIX'] = ''
+              
+              if line.get('ODD_EVEN_BOTH','').title() in ['B','C']:
+                line['ODD_EVEN_BOTH'] = 'Both'
+                
+              line['ID'] = None
+
+              if int(line['PRECINCT_ID'],10)<=45999:
+                print "Original: {0}   Revised: {1}".format(orig,line['PRECINCT_ID'])
+                continue
+                
               cursor.execute(
                 """INSERT INTO
                   Street_Segment(
@@ -507,7 +554,7 @@ def load_data(cursor, config):
                   line.get('STREET_SUFFIX', None),
                   line.get('ADDRESS_DIRECTION', None),
                   line.get('STATE', config.get('Main', 'state_abbreviation')),
-                  line.get('CITY', None),
+                  line.get('CITY', ''),
                   line.get('ZIP', None),
                   line.get('PRECINCT_ID', None),
                   line.get('PRECINCT_SPLIT_ID', None),
@@ -518,7 +565,7 @@ def load_data(cursor, config):
           sys.exit("file {0}, line {1}: {2}".format(filename, reader.line_num, e))
         
         except sqlite3.IntegrityError, e:
-          sys.exit("file {0}, line {1}: {2}".format(filename, reader.line_num, e))
+          sys.exit("file {0}, {1}".format(filename, e))
 
 def update_data(cursor):
   print "Updating Precinct Split data..."
@@ -537,8 +584,6 @@ def update_data(cursor):
   print "Updating Precinct Polling data..."
   cursor.execute("DELETE FROM Precinct_Polling WHERE polling_location_id NOT IN (SELECT id FROM Polling_Location)")
   
-  print "Updating Precinct Split data..."
-  cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
 
 def get_locality(county_id, state_fips):
   ds = Datastore('/tmp/ansi.db')
