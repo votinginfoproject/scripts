@@ -258,13 +258,12 @@ def load_ansi(cursor,filename):
 def get_line(r, reader, parser_type):
   """Generator that determines the parser type and yields the next line"""
   if parser_type=='csv':
-    line = reader.next()
+    for line in reader:
+      yield line 
   elif parser_type=='regex':
-    line = r.readline()
-    groups = re.match(reader,line).groupdict('')
-    line = groups
-  
-  yield line
+    for line in r:
+      groups = re.match(reader,line).groupdict('')
+      yield groups
       
 def load_data(cursor, config):
   file_tmpl = '{0}{1}.txt'
@@ -366,7 +365,7 @@ def load_data(cursor, config):
                   line['ID'],
                   datetime.strptime(line.get('DATE'), config.get('Main','time_format')).strftime('%Y-%m-%d'),
                   line.get('ELECTION_TYPE', "General"),
-                  line.get('STATE_ID'),
+                  line.get('STATE_ID', config.get('Main','fips')),
                   line.get('STATEWIDE', "Yes"),
                   line.get('REGISTRATION_INFO', None),
                 )
@@ -442,7 +441,7 @@ def load_data(cursor, config):
             elif i=='precinct_split':
               if len(line.get('PRECINCT_ID',""))>0:
                 if len(line.get('NAME',''))==0: line['NAME']=line['ID']
-                
+                  
                 line['ID'] = sanitize(line,'ID')
                 
                 cursor.execute(
@@ -476,6 +475,9 @@ def load_data(cursor, config):
               if len(line.get('PRECINCT_SPLIT_ID',""))>0:
                 line['PRECINCT_SPLIT_ID'] = sanitize(line,'PRECINCT_SPLIT_ID')
               
+              if line.get('STREET_DIRECTION','')=='NULL':
+                line['STREET_DIRECTION'] = None
+                
               cursor.execute(
                 """INSERT INTO
                   Street_Segment(
@@ -522,7 +524,7 @@ def load_data(cursor, config):
 
 def update_data(cursor):
   print "Updating Precinct Split data..."
-  cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
+  #cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
   
   print "Updating street segments..."
   cursor.execute("UPDATE Street_Segment SET start_house_number=1, end_house_number=9999999 WHERE start_house_number=0 AND end_house_number=0")

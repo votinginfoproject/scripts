@@ -59,6 +59,7 @@ def create_header(w, cursor, now):
   
   cursor.execute("""SELECT
     VIP_Info.source_id AS source_id,
+    State.id AS state_id,
     State.name AS state_name,
     VIP_Info.id AS vip_id,
     ? AS datetime,
@@ -73,19 +74,38 @@ def create_header(w, cursor, now):
   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
 
   row = cursor.fetchone()
-
-  w.write("""  <source id="{source_id}">
-    <name>State of {state_name}</name>
-    <vip_id>{vip_id}</vip_id>
-    <datetime>{datetime}</datetime>
-    <description>{description}</description>
-    <organization_url>{organization_url}</organization_url>
-  </source>
-  <state id="{vip_id}">
-    <name>{state_name}</name>
-    <election_administration_id>{election_administration_id}</election_administration_id>
-  </state>
-""".format(**row))
+  
+  root = ET.Element("source",id=unicode(row['source_id']))
+  
+  vip_id = ET.SubElement(root,"vip_id")
+  vip_id.text = unicode(row['vip_id'])
+  
+  source_name = ET.SubElement(root,"name")
+  source_name.text = row['state_name']
+  
+  datetime = ET.SubElement(root,"datetime")
+  datetime.text = unicode(row['datetime'])
+  
+  if row['description'] is not None and len(row['description'])>0:
+    description = ET.SubElement(root,"description")
+    description.text = row['description']
+  
+  if row['organization_url'] is not None and len(row['organization_url'])>0:
+    organization_url = ET.SubElement(root,"organization_url")
+    organization_url.text = unicode(row['organization_url'])
+    
+  w.write(ET.tostring(root))
+  
+  state = ET.Element("state",id=unicode(row['state_id']))
+  
+  name = ET.SubElement(state,"name")
+  name.text = row['state_name']
+  
+  if row['election_administration_id'] is not None and len(row['election_administration_id'])>0:
+    election_administration_id = ET.SubElement(state,"election_administration_id")
+    election_administration_id.text = row['election_administration_id']
+  
+  w.write(ET.tostring(state))
 
 def create_election(w, cursor):
   print "Creating election elements..."
@@ -432,14 +452,14 @@ def create_street_segments(w, cursor, config):
     
     non_house_address = ET.SubElement(root,"non_house_address")
     
-    if len(row['street_direction'])>0:
+    if row['street_direction'] is not None and len(row['street_direction'])>0:
       street_direction = ET.SubElement(non_house_address,'street_direction')
       street_direction.text = row['street_direction']
     
     street_name = ET.SubElement(non_house_address,"street_name")
     street_name.text = row['street_name']
     
-    if len(row['street_suffix'])>0:
+    if row['street_suffix'] is not None and len(row['street_suffix'])>0:
       street_suffix = ET.SubElement(non_house_address,"street_suffix")
       street_suffix.text = row['street_suffix']
     
