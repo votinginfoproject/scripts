@@ -116,69 +116,73 @@ namespace Builder {
             OracleDataReader oDataReader = oCmd.ExecuteReader();
 
             while (oDataReader.Read()) {
-                WriteStartElement("street_segment");
-                _oXmlWriter.WriteAttributeString("id", oDataReader["id"].ToString());
+                if(oDataReader["precinct_id"] == DBNull.Value) {
+		  continue;
+		} else {
+		  WriteStartElement("street_segment");
+		  _oXmlWriter.WriteAttributeString("id", oDataReader["id"].ToString());
 
-                if(oDataReader["start_house_number"] == DBNull.Value || oDataReader["start_house_number"].ToString() == "") {
+		  if(oDataReader["start_house_number"] == DBNull.Value || oDataReader["start_house_number"].ToString() == "") {
                     start_house = "1";
-                } else {
+		  } else {
                     start_house = oDataReader["start_house_number"].ToString();
-                }
+		  }
 
-                if (oDataReader["end_house_number"] == DBNull.Value || oDataReader["end_house_number"].ToString() == "") {
+		  if (oDataReader["end_house_number"] == DBNull.Value || oDataReader["end_house_number"].ToString() == "") {
                     end_house = "999999";
-                } else {
+		  } else {
                     end_house = oDataReader["end_house_number"].ToString();
-                }
+		  }
 
-                _oXmlWriter.WriteElementString("start_house_number", start_house);
-                _oXmlWriter.WriteElementString("end_house_number", end_house);
+		  _oXmlWriter.WriteElementString("start_house_number", start_house);
+		  _oXmlWriter.WriteElementString("end_house_number", end_house);
 
-                if (oDataReader["odd_even_both"] != DBNull.Value) {
+		  if (oDataReader["odd_even_both"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("odd_even_both", oDataReader["odd_even_both"].ToString());
-                }
+		  }
 
-                WriteStartElement("non_house_address");
+		  WriteStartElement("non_house_address");
 
-                if (oDataReader["street_direction"] != DBNull.Value) {
+		  if (oDataReader["street_direction"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("street_direction", oDataReader["street_direction"].ToString());
-                }
+		  }
 
-                _oXmlWriter.WriteElementString("street_name", oDataReader["street_name"].ToString().Replace("\"",""));
+		  _oXmlWriter.WriteElementString("street_name", oDataReader["street_name"].ToString().Replace("\"",""));
 
-                if (oDataReader["street_suffix"] != DBNull.Value) {
+		  if (oDataReader["street_suffix"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("street_suffix", oDataReader["street_suffix"].ToString());
-                }
+		  }
 
-                if (oDataReader["address_direction"] != DBNull.Value) {
+		  if (oDataReader["address_direction"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("address_direction", oDataReader["address_direction"].ToString());
-                }
+		  }
 
-                _oXmlWriter.WriteElementString("state", oDataReader["state"].ToString());
-                _oXmlWriter.WriteElementString("city", oDataReader["city"].ToString());
+		  _oXmlWriter.WriteElementString("state", oDataReader["state"].ToString());
+		  _oXmlWriter.WriteElementString("city", oDataReader["city"].ToString());
 
-                if (oDataReader["zip"] != DBNull.Value) {
+		  if (oDataReader["zip"] != DBNull.Value) {
                     _oXmlWriter.WriteElementString("zip", oDataReader["zip"].ToString());
-                }
+		  }
 
-                WriteEndElement(); // end non_house_address
+		  WriteEndElement(); // end non_house_address
 
-                _oXmlWriter.WriteElementString("precinct_id", oDataReader["precinct_id"].ToString());
+		  _oXmlWriter.WriteElementString("precinct_id", oDataReader["precinct_id"].ToString());
 
-                WriteEndElement(); // end street_segment
+		  WriteEndElement(); // end street_segment
+		}
             }
         }
 
         public void WritePrecincts(OracleCommand oCmd) {
-            OracleCommand oCmdPolling = new OracleCommand();
-            oCmdPolling.Connection = oCmd.Connection;
-            oCmdPolling.CommandType = CommandType.Text;
+            //OracleCommand oCmdPolling = new OracleCommand();
+            //oCmdPolling.Connection = oCmd.Connection;
+            //oCmdPolling.CommandType = CommandType.Text;
 
             oCmd.CommandText = "select * from Table";
             oCmd.CommandType = CommandType.Text;
 
             OracleDataReader oDataReader = oCmd.ExecuteReader();
-            OracleDataReader oPollingReader;
+            //OracleDataReader oPollingReader;
 
             while (oDataReader.Read()) {
                 WriteStartElement("precinct");
@@ -187,28 +191,32 @@ namespace Builder {
                 _oXmlWriter.WriteElementString("locality_id", oDataReader["locality_id"].ToString());
 
                 // based on relationship between polling place and precinct
-                oCmdPolling.CommandText = "";
-                oPollingReader = oCmdPolling.ExecuteReader();
+                //oCmdPolling.CommandText = "";
+                //oPollingReader = oCmdPolling.ExecuteReader();
 
                 // if there is only one polling place per precinct, this may be unnecessary
-                while (oPollingReader.Read()) {
+                /*while (oPollingReader.Read()) {
                     _oXmlWriter.WriteElementString("polling_location_id", oPollingReader["polling_location_id"].ToString());
-                }
-                
+                }*/
+
+		if (oDataReader["polling_location_id"] != DBNull.Value) {
+		  _oXmlWriter.WriteElementString("polling_location_id", oPollingReader["polling_location_id"].ToString());
+		}
+
                 WriteEndElement();
             }
         }
 
         public void WritePrecinctsSplits(OracleCommand oCmd) {
-            OracleCommand oCmdPolling = new OracleCommand();
-            oCmdPolling.Connection = oCmd.Connection;
-            oCmdPolling.CommandType = CommandType.Text;
+            //OracleCommand oCmdPolling = new OracleCommand();
+            //oCmdPolling.Connection = oCmd.Connection;
+            //oCmdPolling.CommandType = CommandType.Text;
 
             oCmd.CommandText = "select * from Table";
             oCmd.CommandType = CommandType.Text;
 
             OracleDataReader oDataReader = oCmd.ExecuteReader();
-            OracleDataReader oPollingReader;
+            //OracleDataReader oPollingReader;
 
             while (oDataReader.Read()) {
                 WriteStartElement("precinct_split");
@@ -217,13 +225,17 @@ namespace Builder {
                 _oXmlWriter.WriteElementString("precinct_id", oDataReader["precinct_id"].ToString());
 
                 // based on relationship between polling place and precinct
-                oCmdPolling.CommandText = "select * from Table where id=";
+                /*oCmdPolling.CommandText = "select * from Table where id=";
                 oPollingReader = oCmdPolling.ExecuteReader();
 
                 // if there is only one polling place per precinct, this may be unnecessary
                 while (oPollingReader.Read()) {
                     _oXmlWriter.WriteElementString("polling_location_id", oPollingReader["polling_location_id"].ToString());
-                }
+                }*/
+		
+		if (oDataReader["polling_location_id"] != DBNull.Value) {
+		  _oXmlWriter.WriteElementString("polling_location_id", oPollingReader["polling_location_id"].ToString());
+		}
                 
                 WriteEndElement();
             }
