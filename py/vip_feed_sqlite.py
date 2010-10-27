@@ -86,6 +86,7 @@ def create_header(w, cursor, now):
   </source>
   <state id="{vip_id}">
     <name>{state_name}</name>
+    <election_administration_id>{election_administration_id}</election_administration_id>
   </state>
 """.format(**row))
 

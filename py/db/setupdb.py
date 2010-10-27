@@ -433,7 +433,7 @@ def load_data(cursor, config):
               )
               
               line['POLLING_LOCATION_ID'] = cursor.lastrowid
-              
+
               cursor.execute(
                 "INSERT OR IGNORE INTO Precinct(id,name,locality_id,mail_only) VALUES (?,?,?,?)",
                 (
@@ -447,7 +447,7 @@ def load_data(cursor, config):
               cursor.execute(
                 "INSERT OR IGNORE INTO Precinct_Polling(precinct_id,polling_location_id) VALUES (?,?)",
                 (
-                  line['ID'],
+                  line['PRECINCT_ID'],
                   line['POLLING_LOCATION_ID'],
                 )
               )
