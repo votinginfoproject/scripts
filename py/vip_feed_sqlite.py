@@ -35,7 +35,7 @@ def main():
   datastore = Datastore(database)
   cursor = datastore.connect()
   
-  vip_file = "{0}vipFeed-{1}.xml".format(config.get('Main','output_dir'),config.get('Main','fips'))
+  vip_file = "{0}vipFeed-{1}_filtered.xml".format(config.get('Main','output_dir'),config.get('Main','fips'))
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -101,9 +101,9 @@ def create_header(w, cursor, now):
   name = ET.SubElement(state,"name")
   name.text = row['state_name']
   
-  if row['election_administration_id'] is not None and len(row['election_administration_id'])>0:
+  if row['election_administration_id'] is not None and len(unicode(row['election_administration_id']))>0:
     election_administration_id = ET.SubElement(state,"election_administration_id")
-    election_administration_id.text = row['election_administration_id']
+    election_administration_id.text = unicode(row['election_administration_id'])
   
   w.write(ET.tostring(state))
 
@@ -261,7 +261,9 @@ PRIMARY KEY(polling_location_id, precinct_id)
   cursor.execute("""SELECT
     polling_location_id AS polling_location_id,
     precinct_id AS precinct_id
-  FROM Precinct_Polling"""
+  FROM Precinct_Polling, Polling_Location
+  WHERE
+    polling_location_id=id AND location_name NOT LIKE 'EVC%'"""
   )
   
   for row in cursor:
@@ -329,7 +331,10 @@ PRIMARY KEY(polling_location_id, split_id)
   cursor.execute("""SELECT
     polling_location_id AS polling_location_id,
     split_id AS precinct_split_id
-  FROM Split_Polling"""
+  FROM
+    Split_Polling, Polling_Location
+  WHERE
+    polling_location_id=id AND location_name NOT LIKE 'EVC%'"""
   )
   
   for row in cursor:
@@ -496,14 +501,10 @@ def create_polling_locations(w, cursor, config):
     city,
     ? AS state,
     zip
-  FROM Polling_Location
-  WHERE
-    line1 IS NOT NULL AND
-    line1!=?""",
+  FROM Polling_Location""",
     (
       config.get('Polling_Location','polling_prefix'),
       config.get('Main', 'state_abbreviation'),
-      '',
     )
   )  
 #   cursor.execute("""SELECT

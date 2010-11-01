@@ -401,11 +401,11 @@ def load_data(cursor, config):
                 "INSERT OR IGNORE INTO Polling_Location(id,location_name,line1,city,state,zip) VALUES (?,?,?,?,?,?)",
                 (
                   line['ID'],
-                  line.get('LOCATION_NAME'),
-                  line.get('LINE1'),
-                  line.get('CITY'),
-                  line.get('STATE'),
-                  line.get('ZIP'),
+                  line.get('LOCATION_NAME',''),
+                  line.get('LINE1',''),
+                  line.get('CITY',''),
+                  line.get('STATE',''),
+                  line.get('ZIP',''),
                 )
               )
               
@@ -534,10 +534,10 @@ def update_data(cursor):
   cursor.execute("UPDATE Locality SET election_administration_id=NULL WHERE election_administration_id NOT IN (SELECT id FROM Election_Administration)")
   
   print "Updating Polling Location data..."
-  cursor.execute("DELETE FROM Polling_Location WHERE line1 IS NULL OR line1=''")
+  #cursor.execute("DELETE FROM Polling_Location WHERE line1 IS NULL OR line1=''")
   
   print "Updating Precinct Polling data..."
-  cursor.execute("DELETE FROM Precinct_Polling WHERE polling_location_id NOT IN (SELECT id FROM Polling_Location)")
+  #cursor.execute("DELETE FROM Precinct_Polling WHERE polling_location_id NOT IN (SELECT id FROM Polling_Location)")
   
   print "Updating Precinct Split data..."
   cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
