@@ -39,7 +39,7 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.2a.xsd" schemaVersion="2.2">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
 """)
     
     create_header(w, cursor, now)
@@ -48,7 +48,7 @@ def main():
     create_election_officials(w, cursor)
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
-    create_precinct_splits(w, cursor, config)
+    #create_precinct_splits(w, cursor, config)
     create_street_segments(w, cursor, config)
     create_polling_locations(w, cursor, config)
     
@@ -57,6 +57,22 @@ def main():
 def create_header(w, cursor, now):
   print "Creating source and state elements..."
   
+#   cursor.execute("""SELECT
+#     VIP_Info.source_id AS source_id,
+#     State.id AS state_id,
+#     State.name AS state_name,
+#     VIP_Info.id AS vip_id,
+#     ? AS datetime,
+#     description,
+#     organization_url,
+#     election_administration_id
+#   FROM
+#     VIP_Info,
+#     State
+#   WHERE
+#     State.id=VIP_Info.state_id
+#   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
+
   cursor.execute("""SELECT
     VIP_Info.source_id AS source_id,
     State.id AS state_id,
@@ -64,8 +80,7 @@ def create_header(w, cursor, now):
     VIP_Info.id AS vip_id,
     ? AS datetime,
     description,
-    organization_url,
-    election_administration_id
+    organization_url
   FROM
     VIP_Info,
     State
@@ -101,9 +116,9 @@ def create_header(w, cursor, now):
   name = ET.SubElement(state,"name")
   name.text = row['state_name']
   
-  if row['election_administration_id'] is not None and len(row['election_administration_id'])>0:
-    election_administration_id = ET.SubElement(state,"election_administration_id")
-    election_administration_id.text = row['election_administration_id']
+#   if row['election_administration_id'] is not None and len(unicode(row['election_administration_id']))>0:
+#     election_administration_id = ET.SubElement(state,"election_administration_id")
+#     election_administration_id.text = unicode(row['election_administration_id'])
   
   w.write(ET.tostring(state))
 
@@ -136,7 +151,11 @@ def create_election_admins(w, cursor):
   """Writes all election administration information"""
   print "Creating election administration elements..."
   
-  cursor.execute("SELECT * FROM Election_Administration")
+  cursor.execute("""SELECT *
+    FROM
+      Election_Administration AS ea, Election_Official AS eo
+    WHERE
+      eo.id = ea.eo_id""")
 
   for row in cursor:
     root = ET.Element("election_administration",id=unicode(row['id']))
@@ -270,12 +289,16 @@ PRIMARY KEY(polling_location_id, precinct_id)
   mem.commit()
   
   cursor.execute("""SELECT
-    id AS original_id,
-    ?||id AS id,
-    name,
-    ?||locality_id AS locality_id,
-    mail_only
-    FROM Precinct WHERE locality_id IS NOT NULL AND name IS NOT NULL""",
+    P.id AS original_id,
+    ?||P.id AS id,
+    P.name,
+    ?||P.locality_id AS locality_id,
+    P.mail_only
+    FROM Precinct P, Locality L
+    WHERE
+      P.locality_id = L.id AND
+      P.locality_id IS NOT NULL AND
+      P.name IS NOT NULL""",
     (
       config.get('Precinct', 'precinct_prefix'),
       config.get('Locality', 'locality_prefix'),
@@ -388,6 +411,37 @@ PRIMARY KEY(polling_location_id, split_id)
 def create_street_segments(w, cursor, config):
   print "Creating street segment elements..."
   
+#   cursor.execute("""SELECT
+#       ?||s.id as id,
+#       start_house_number,
+#       end_house_number,
+#       CASE
+#         WHEN odd_even_both='O' THEN 'Odd'
+#         WHEN odd_even_both='E' THEN 'Even'
+#         WHEN odd_even_both='A' THEN 'Both'
+#         ELSE odd_even_both
+#       END AS odd_even_both,
+#       start_apartment_number,
+#       end_apartment_number,
+#       street_direction,
+#       street_name,
+#       street_suffix,
+#       address_direction,
+#       state,
+#       city,
+#       zip,
+#       ?||s.precinct_id AS precinct_id,
+#       ?||s.precinct_split_id AS precinct_split_id
+#     FROM
+#       Street_Segment AS s
+#     WHERE
+#       s.street_name IS NOT NULL""",
+#     (
+#       config.get('Street_Segment','street_prefix'),    
+#       config.get('Precinct','precinct_prefix'),
+#       config.get('Precinct_Split','split_prefix'),
+#     )
+
   cursor.execute("""SELECT
       ?||s.id as id,
       start_house_number,
@@ -407,16 +461,16 @@ def create_street_segments(w, cursor, config):
       state,
       city,
       zip,
-      ?||s.precinct_id AS precinct_id,
-      ?||s.precinct_split_id AS precinct_split_id
+      ?||p.id AS precinct_id
     FROM
-      Street_Segment AS s
+      Street_Segment AS s, Precinct AS p, Locality AS l
     WHERE
+      s.precinct_id = p.id AND
+      l.id = p.locality_id AND
       s.street_name IS NOT NULL""",
     (
       config.get('Street_Segment','street_prefix'),    
       config.get('Precinct','precinct_prefix'),
-      config.get('Precinct_Split','split_prefix'),
     )
   )
   
@@ -480,9 +534,9 @@ def create_street_segments(w, cursor, config):
       precinct_id = ET.SubElement(root,"precinct_id")
       precinct_id.text = unicode(row['precinct_id'])
       
-    if row['precinct_split_id'] is not None:
-      precinct_split_id = ET.SubElement(root,"precinct_split_id")
-      precinct_split_id.text = unicode(row['precinct_split_id'])
+#     if row['precinct_split_id'] is not None:
+#       precinct_split_id = ET.SubElement(root,"precinct_split_id")
+#       precinct_split_id.text = unicode(row['precinct_split_id'])
 
     w.write(ET.tostring(root))
   

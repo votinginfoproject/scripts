@@ -316,12 +316,13 @@ def load_data(cursor, config):
         try:
           for line in get_line(r, reader, parser_type):
             if i=='source':
+              print line
               cursor.execute(
                 "INSERT INTO VIP_Info(id,source_id,description,state_id) VALUES (?,?,?,?)",
                 (
                   line['VIP_ID'],
                   line['ID'],
-                  line['DESCRIPTION'],
+                  line.get('DESCRIPTION',None),
                   line.get('STATE_ID', config.get('Main','fips')),
                 )
               )
@@ -386,7 +387,14 @@ def load_data(cursor, config):
               
             elif i=='locality':
               cursor.execute(
-                "INSERT OR IGNORE INTO Locality(id,name,state_id,type,election_administration_id) VALUES (?,?,?,?,?)",
+                """INSERT OR IGNORE INTO
+                  Locality(
+                  id,
+                  name,
+                  state_id,
+                  type,
+                  election_administration_id
+                ) VALUES (?,?,?,?,?)""",
                 (
                   line['ID'],
                   line.get('NAME'),
@@ -398,7 +406,15 @@ def load_data(cursor, config):
             
             elif i=='polling_location':
               cursor.execute(
-                "INSERT OR IGNORE INTO Polling_Location(id,location_name,line1,city,state,zip) VALUES (?,?,?,?,?,?)",
+                """INSERT OR IGNORE INTO
+                  Polling_Location(
+                  id,
+                  location_name,
+                  line1,
+                  city,
+                  state,
+                  zip
+                ) VALUES (?,?,?,?,?,?)""",
                 (
                   line['ID'],
                   line.get('LOCATION_NAME'),
@@ -509,8 +525,8 @@ def load_data(cursor, config):
                   line.get('STREET_SUFFIX', None),
                   line.get('ADDRESS_DIRECTION', None),
                   line.get('STATE', config.get('Main', 'state_abbreviation')),
-                  line.get('CITY', None),
-                  line.get('ZIP', None),
+                  line.get('CITY', ''),
+                  line.get('ZIP', ''),
                   line.get('PRECINCT_ID', None),
                   line.get('PRECINCT_SPLIT_ID', None),
                 )
