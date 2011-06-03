@@ -347,7 +347,6 @@ def load_data(cursor, config):
               )
             
             elif i=='state':
-              print line
               cursor.execute(
                 "INSERT INTO State(id,name,election_administration_id,organization_url) VALUES (?,?,?,?)",
                 (
