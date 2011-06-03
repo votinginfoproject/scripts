@@ -39,7 +39,7 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.2a.xsd" schemaVersion="2.2">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
 """)
     
     create_header(w, cursor, now)
@@ -101,9 +101,9 @@ def create_header(w, cursor, now):
   name = ET.SubElement(state,"name")
   name.text = row['state_name']
   
-  if row['election_administration_id'] is not None and len(row['election_administration_id'])>0:
+  if row['election_administration_id'] is not None:
     election_administration_id = ET.SubElement(state,"election_administration_id")
-    election_administration_id.text = row['election_administration_id']
+    election_administration_id.text = unicode(row['election_administration_id'])
   
   w.write(ET.tostring(state))
 
