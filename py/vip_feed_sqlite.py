@@ -116,9 +116,9 @@ def create_header(w, cursor, now):
   name = ET.SubElement(state,"name")
   name.text = row['state_name']
   
-#   if row['election_administration_id'] is not None and len(unicode(row['election_administration_id']))>0:
-#     election_administration_id = ET.SubElement(state,"election_administration_id")
-#     election_administration_id.text = unicode(row['election_administration_id'])
+  if row['election_administration_id'] is not None:
+    election_administration_id = ET.SubElement(state,"election_administration_id")
+    election_administration_id.text = unicode(row['election_administration_id'])
   
   w.write(ET.tostring(state))
 
