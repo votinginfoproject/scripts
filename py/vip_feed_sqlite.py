@@ -31,7 +31,10 @@ def main():
     sys.exit("Please specify a valid config file")
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
-  setupdb(database, config)
+  
+  if opts.refresh_db:
+    setupdb(database, config)
+    
   datastore = Datastore(database)
   cursor = datastore.connect()
   
@@ -39,7 +42,7 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
     create_header(w, cursor, now)
@@ -48,7 +51,7 @@ def main():
     create_election_officials(w, cursor)
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
-    #create_precinct_splits(w, cursor, config)
+    create_precinct_splits(w, cursor, config)
     create_street_segments(w, cursor, config)
     create_polling_locations(w, cursor, config)
     
@@ -57,22 +60,6 @@ def main():
 def create_header(w, cursor, now):
   print "Creating source and state elements..."
   
-#   cursor.execute("""SELECT
-#     VIP_Info.source_id AS source_id,
-#     State.id AS state_id,
-#     State.name AS state_name,
-#     VIP_Info.id AS vip_id,
-#     ? AS datetime,
-#     description,
-#     organization_url,
-#     election_administration_id
-#   FROM
-#     VIP_Info,
-#     State
-#   WHERE
-#     State.id=VIP_Info.state_id
-#   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
-
   cursor.execute("""SELECT
     VIP_Info.source_id AS source_id,
     State.id AS state_id,
@@ -80,13 +67,29 @@ def create_header(w, cursor, now):
     VIP_Info.id AS vip_id,
     ? AS datetime,
     description,
-    organization_url
+    organization_url,
+    election_administration_id
   FROM
     VIP_Info,
     State
   WHERE
     State.id=VIP_Info.state_id
   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
+
+#   cursor.execute("""SELECT
+#     VIP_Info.source_id AS source_id,
+#     State.id AS state_id,
+#     State.name AS state_name,
+#     VIP_Info.id AS vip_id,
+#     ? AS datetime,
+#     description,
+#     organization_url
+#   FROM
+#     VIP_Info,
+#     State
+#   WHERE
+#     State.id=VIP_Info.state_id
+#   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
 
   row = cursor.fetchone()
   
@@ -411,6 +414,45 @@ PRIMARY KEY(polling_location_id, split_id)
 def create_street_segments(w, cursor, config):
   print "Creating street segment elements..."
   
+  cursor.execute("""SELECT
+      ?||s.id as id,
+      start_house_number,
+      end_house_number,
+      CASE
+        WHEN odd_even_both='O' THEN 'Odd'
+        WHEN odd_even_both='E' THEN 'Even'
+        WHEN odd_even_both='B' THEN 'Both'
+        WHEN odd_even_both='' THEN 'Both'
+        ELSE odd_even_both
+      END AS odd_even_both,
+      start_apartment_number,
+      end_apartment_number,
+      street_direction,
+      street_name,
+      street_suffix,
+      address_direction,
+      state,
+      city,
+      zip,
+      ?||p.id AS precinct_id,
+      ?||s.precinct_split_id AS precinct_split_id
+    FROM
+      Street_Segment AS s, Precinct AS p, Precinct_Split AS ps
+    WHERE
+      s.street_name IS NOT NULL AND
+      s.start_house_number IS NOT NULL AND
+      s.start_house_number!='' AND
+      s.end_house_number!='' AND
+      s.end_house_number IS NOT NULL AND
+      s.precinct_split_id = ps.id AND
+      ps.precinct_id = p.id""",
+    (
+      config.get('Street_Segment','street_prefix'),    
+      config.get('Precinct','precinct_prefix'),
+      config.get('Precinct_Split','split_prefix'),
+    )
+    )
+
 #   cursor.execute("""SELECT
 #       ?||s.id as id,
 #       start_house_number,
@@ -430,55 +472,25 @@ def create_street_segments(w, cursor, config):
 #       state,
 #       city,
 #       zip,
-#       ?||s.precinct_id AS precinct_id,
-#       ?||s.precinct_split_id AS precinct_split_id
+#       ?||p.id AS precinct_id
 #     FROM
-#       Street_Segment AS s
+#       Street_Segment AS s, Precinct AS p, Locality AS l
 #     WHERE
+#       s.precinct_id = p.id AND
+#       l.id = p.locality_id AND
 #       s.street_name IS NOT NULL""",
 #     (
 #       config.get('Street_Segment','street_prefix'),    
 #       config.get('Precinct','precinct_prefix'),
-#       config.get('Precinct_Split','split_prefix'),
 #     )
-
-  cursor.execute("""SELECT
-      ?||s.id as id,
-      start_house_number,
-      end_house_number,
-      CASE
-        WHEN odd_even_both='O' THEN 'Odd'
-        WHEN odd_even_both='E' THEN 'Even'
-        WHEN odd_even_both='A' THEN 'Both'
-        ELSE odd_even_both
-      END AS odd_even_both,
-      start_apartment_number,
-      end_apartment_number,
-      street_direction,
-      street_name,
-      street_suffix,
-      address_direction,
-      state,
-      city,
-      zip,
-      ?||p.id AS precinct_id
-    FROM
-      Street_Segment AS s, Precinct AS p, Locality AS l
-    WHERE
-      s.precinct_id = p.id AND
-      l.id = p.locality_id AND
-      s.street_name IS NOT NULL""",
-    (
-      config.get('Street_Segment','street_prefix'),    
-      config.get('Precinct','precinct_prefix'),
-    )
-  )
+#   )
   
   for row in cursor:
-    root = ET.Element("street_segment",id=unicode(row['id']))
-    
-    if len(unicode(row['start_house_number']))>0 and len(unicode(row['end_house_number']))>0:
+    try:
+      root = ET.Element("street_segment",id=unicode(row['id']))
       
+      #if len(unicode(row['start_house_number']))>0 and len(unicode(row['end_house_number']))>0:
+        
       if row['start_house_number']>row['end_house_number']:
         start = unicode(row['end_house_number'])
         end = unicode(row['start_house_number'])
@@ -491,54 +503,55 @@ def create_street_segments(w, cursor, config):
       
       end_house_number = ET.SubElement(root,"end_house_number")  
       end_house_number.text = end
-    
-    if len(row['odd_even_both'])>0:
+      
       odd_even_both = ET.SubElement(root,"odd_even_both")
       odd_even_both.text = unicode(row['odd_even_both'])
     
-    if row['start_apartment_number'] is not None and row['end_apartment_number'] is not None and len(unicode(row['start_apartment_number']))>0 and len(unicode(row['end_apartment_number']))>0:
+#       if row['start_apartment_number'] is not None and row['end_apartment_number'] is not None and len(unicode(row['start_apartment_number']))>0 and len(unicode(row['end_apartment_number']))>0:
+#         
+#         start_apartment_number = ET.SubElement(root,"start_apartment_number")
+#         start_apartment_number.text = unicode(row['start_apartment_number'])
+#         
+#         end_apartment_number = ET.SubElement(root,"end_apartment_number")
+#         end_apartment_number.text = unicode(row['end_apartment_number'])
       
-      start_apartment_number = ET.SubElement(root,"start_apartment_number")
-      start_apartment_number.text = unicode(row['start_apartment_number'])
+      non_house_address = ET.SubElement(root,"non_house_address")
       
-      end_apartment_number = ET.SubElement(root,"end_apartment_number")
-      end_apartment_number.text = unicode(row['end_apartment_number'])
-    
-    non_house_address = ET.SubElement(root,"non_house_address")
-    
-    if row['street_direction'] is not None and len(row['street_direction'])>0:
-      street_direction = ET.SubElement(non_house_address,'street_direction')
-      street_direction.text = row['street_direction']
-    
-    street_name = ET.SubElement(non_house_address,"street_name")
-    street_name.text = row['street_name']
-    
-    if row['street_suffix'] is not None and len(row['street_suffix'])>0:
-      street_suffix = ET.SubElement(non_house_address,"street_suffix")
-      street_suffix.text = row['street_suffix']
-    
-    if row['address_direction'] is not None and len(row['address_direction'])>0:
-      address_direction = ET.SubElement(non_house_address,"address_direction")
-      address_direction.text = row['address_direction']
-    
-    city = ET.SubElement(non_house_address,"city")
-    city.text = row['city']
-    
-    state = ET.SubElement(non_house_address,"state")
-    state.text = row['state']
-    
-    zip = ET.SubElement(non_house_address,"zip")
-    zip.text = row['zip']
-
-    if row['precinct_id'] is not None:
-      precinct_id = ET.SubElement(root,"precinct_id")
-      precinct_id.text = unicode(row['precinct_id'])
+      if row['street_direction'] is not None and len(row['street_direction'])>0:
+        street_direction = ET.SubElement(non_house_address,'street_direction')
+        street_direction.text = row['street_direction']
       
-#     if row['precinct_split_id'] is not None:
-#       precinct_split_id = ET.SubElement(root,"precinct_split_id")
-#       precinct_split_id.text = unicode(row['precinct_split_id'])
-
-    w.write(ET.tostring(root))
+      street_name = ET.SubElement(non_house_address,"street_name")
+      street_name.text = row['street_name']
+      
+      if row['street_suffix'] is not None and len(row['street_suffix'])>0:
+        street_suffix = ET.SubElement(non_house_address,"street_suffix")
+        street_suffix.text = row['street_suffix']
+      
+      if row['address_direction'] is not None and len(row['address_direction'])>0:
+        address_direction = ET.SubElement(non_house_address,"address_direction")
+        address_direction.text = row['address_direction']
+      
+      city = ET.SubElement(non_house_address,"city")
+      city.text = row['city']
+      
+      state = ET.SubElement(non_house_address,"state")
+      state.text = row['state']
+      
+      zip = ET.SubElement(non_house_address,"zip")
+      zip.text = row['zip']
+  
+      if row['precinct_id'] is not None:
+        precinct_id = ET.SubElement(root,"precinct_id")
+        precinct_id.text = unicode(row['precinct_id'])
+        
+      if row['precinct_split_id'] is not None:
+        precinct_split_id = ET.SubElement(root,"precinct_split_id")
+        precinct_split_id.text = unicode(row['precinct_split_id'])
+  
+      w.write(ET.tostring(root))
+    except:
+      print row
   
 def create_polling_locations(w, cursor, config):
   print "Creating polling place elements..."
@@ -625,6 +638,10 @@ def create_options_list():
       dest="config", default="config.ini",
       help="Specifies a config file",
       metavar="CONFIG_FILE"),
+    
+    make_option("--refresh-db", dest="verbose",
+      default=False, action="store_true",
+      help="Reload the database"),
   ]
   
   return option_list
