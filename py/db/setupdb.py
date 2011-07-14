@@ -318,6 +318,14 @@ def load_data(cursor, config):
         
         try:
           for line in get_line(r, reader, parser_type):
+            # trim off any whitespace and escape the values
+            try:
+              line.update(zip(line.iterkeys(), map(str.strip, line.itervalues())))
+              line.update(zip(line.iterkeys(), map(escape, line.itervalues())))
+            except:
+              # if this fails, print the offending line
+              print line
+              
             if i=='source':
               print line
               cursor.execute(
