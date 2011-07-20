@@ -31,7 +31,7 @@ def main():
     sys.exit("Please specify a valid config file")
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
-  
+  print opts
   if opts.refresh_db:
     setupdb(database, config)
     
@@ -42,7 +42,7 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
 """)
     
     create_header(w, cursor, now)
@@ -639,7 +639,7 @@ def create_options_list():
       help="Specifies a config file",
       metavar="CONFIG_FILE"),
     
-    make_option("--refresh-db", dest="verbose",
+    make_option("", "--refresh-db", dest="refresh_db",
       default=False, action="store_true",
       help="Reload the database"),
   ]
