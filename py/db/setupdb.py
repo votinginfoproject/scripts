@@ -569,6 +569,7 @@ def update_data(cursor):
   print "Updating street segments..."
   cursor.execute("UPDATE Street_Segment SET start_house_number=1, end_house_number=9999999 WHERE start_house_number=0 AND end_house_number=0")
   cursor.execute("UPDATE Street_Segment SET start_house_number=1, end_house_number=9999999 WHERE start_house_number='' AND end_house_number=''")
+  cursor.execute("UPDATE Street_Segment SET state='PA' WHERE state!='PA'")
   #cursor.execute("DELETE FROM Street_Segment WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
   
   print "Updating Locality election official data..."

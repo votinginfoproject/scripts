@@ -31,7 +31,7 @@ def main():
     sys.exit("Please specify a valid config file")
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
-  print opts
+  
   if opts.refresh_db:
     setupdb(database, config)
     
@@ -45,8 +45,8 @@ def main():
 <vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
 """)
     
-    create_header(w, cursor, now)
-    create_election(w, cursor)
+    create_header(w, cursor, config, now)
+    create_election(w, cursor, config)
     create_election_admins(w, cursor)
     create_election_officials(w, cursor)
     create_localities(w, cursor, config)
@@ -57,7 +57,7 @@ def main():
     
     w.write('</vip_object>')
 
-def create_header(w, cursor, now):
+def create_header(w, cursor, config, now):
   print "Creating source and state elements..."
   
   cursor.execute("""SELECT
@@ -68,13 +68,18 @@ def create_header(w, cursor, now):
     ? AS datetime,
     description,
     organization_url,
-    election_administration_id
+    ?||election_administration_id AS election_administration_id
   FROM
     VIP_Info,
     State
   WHERE
     State.id=VIP_Info.state_id
-  """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
+  """,
+    (
+      now.strftime('%Y-%m-%dT%H:%M:%S'),
+      config.get('Election_Administration', 'election_admin_prefix'),
+    )
+  )
 
 #   cursor.execute("""SELECT
 #     VIP_Info.source_id AS source_id,
@@ -125,27 +130,39 @@ def create_header(w, cursor, now):
   
   w.write(ET.tostring(state))
 
-def create_election(w, cursor):
+def create_election(w, cursor, config):
   print "Creating election elements..."
   
-  cursor.execute("SELECT * FROM Election")
+  cursor.execute("""SELECT
+    ?||id AS id,
+    date,
+    statewide,
+    election_type,
+    state_id,
+    registration_info
+  FROM
+    Election""",
+    (
+      config.get('Election', 'election_prefix'),
+    )
+  )
   
   for row in cursor:
-    root = ET.Element("election",id=unicode(row['id']))
+    root = ET.Element("election", id=unicode(row['id']))
     
     date = ET.SubElement(root,"date")
     date.text = row['date']
     
-    election_type = ET.SubElement(root,"election_type")
+    election_type = ET.SubElement(root, "election_type")
     election_type.text = row['election_type']
     
-    state_id = ET.SubElement(root,"state_id")
+    state_id = ET.SubElement(root, "state_id")
     state_id.text = unicode(row['state_id'])
     
-    statewide = ET.SubElement(root,"statewide")
+    statewide = ET.SubElement(root, "statewide")
     statewide.text = row['statewide']
     
-    registration_info = ET.SubElement(root,"registration_info")
+    registration_info = ET.SubElement(root, "registration_info")
     registration_info.text = unicode(row['registration_info'])
     
     w.write(ET.tostring(root))
@@ -246,8 +263,12 @@ def create_localities(w, cursor, config):
     state_id,
     type,
     election_administration_id
-  FROM Locality""",
-  (config.get('Locality','locality_prefix'),))
+    FROM
+      Locality""",
+    (
+      config.get('Locality','locality_prefix'),
+    )
+  )
   
   for row in cursor:
     root = ET.Element("locality",id=unicode(row['id']))
@@ -297,7 +318,8 @@ PRIMARY KEY(polling_location_id, precinct_id)
     P.name,
     ?||P.locality_id AS locality_id,
     P.mail_only
-    FROM Precinct P, Locality L
+    FROM
+      Precinct P, Locality L
     WHERE
       P.locality_id = L.id AND
       P.locality_id IS NOT NULL AND
@@ -375,7 +397,7 @@ PRIMARY KEY(polling_location_id, split_id)
     WHERE
       p.id=ps.precinct_id""",
     (
-      config.get('Precinct_Split','split_prefix'),
+      config.get('Precinct_Split','precinct_split_prefix'),
       config.get('Precinct','precinct_prefix'),
     )
   )
@@ -449,7 +471,7 @@ def create_street_segments(w, cursor, config):
     (
       config.get('Street_Segment','street_prefix'),    
       config.get('Precinct','precinct_prefix'),
-      config.get('Precinct_Split','split_prefix'),
+      config.get('Precinct_Split','precinct_split_prefix'),
     )
     )
 
