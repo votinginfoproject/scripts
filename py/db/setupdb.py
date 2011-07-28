@@ -278,7 +278,7 @@ def load_data(cursor, config):
     'polling_location',
     'precinct',
     'precinct_split',
-    'street_segment',
+#    'street_segment',
   )
   
   for i in possible_data:

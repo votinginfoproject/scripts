@@ -49,7 +49,7 @@ def main():
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
     #create_precinct_splits(w, cursor, config)
-    create_street_segments(w, cursor, config)
+#    create_street_segments(w, cursor, config)
     create_polling_locations(w, cursor, config)
     
     w.write('</vip_object>')
