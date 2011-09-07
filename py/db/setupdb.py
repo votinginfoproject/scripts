@@ -121,6 +121,27 @@ electoral_district_id INTEGER NOT NULL REFERENCES Electoral_District (id),
 PRIMARY KEY(precinct_split_id, electoral_district_id)
 )""")
 
+## Original statement for all states with street tables
+#
+#   cursor.execute("""CREATE TABLE IF NOT EXISTS Street_Segment
+# (
+# id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+# start_house_number INTEGER NOT NULL,
+# end_house_number INTEGER NOT NULL,
+# odd_even_both TEXT,
+# start_apartment_number INTEGER,
+# end_apartment_number INTEGER,
+# street_direction TEXT,
+# street_name TEXT NOT NULL,
+# street_suffix TEXT NOT NULL,
+# address_direction TEXT,
+# state TEXT NOT NULL,
+# city TEXT NOT NULL,
+# zip TEXT NOT NULL,
+# precinct_id INTEGER REFERENCES Precinct (id),
+# precinct_split_id INTEGER REFERENCES Precint_Split (id)
+# )""")
+
   cursor.execute("""CREATE TABLE IF NOT EXISTS Street_Segment
 (
 id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -279,6 +300,7 @@ def load_data(cursor, config):
     'precinct',
     'precinct_split',
     'street_segment',
+    'street_segment_aug',
   )
   
   for i in possible_data:
@@ -417,7 +439,7 @@ def load_data(cursor, config):
             
             elif i=='polling_location':
               cursor.execute(
-                """INSERT OR IGNORE INTO
+                """INSERT INTO
                   Polling_Location(
                   id,
                   location_name,
@@ -429,30 +451,30 @@ def load_data(cursor, config):
                 (
                   line['ID'],
                   line.get('LOCATION_NAME'),
-                  line.get('LINE1'),
-                  line.get('CITY'),
-                  line.get('STATE'),
-                  line.get('ZIP'),
+                  line.get('LINE1',''),
+                  line.get('CITY',''),
+                  line.get('STATE',''),
+                  line.get('ZIP',''),
                 )
               )
               
             elif i=='precinct':
               cursor.execute(
-                "INSERT OR IGNORE INTO Precinct(id,name,locality_id,mail_only) VALUES (?,?,?,?)",
+                "INSERT INTO Precinct(id,name,locality_id,mail_only) VALUES (?,?,?,?)",
                 (
                   line['ID'],
                   line.get('NAME'),
-                  line.get('LOCALITY_ID', config.get('Main','locality_id')),
+                  line.get('LOCALITY_ID'),
                   line.get('MAIL_ONLY',"No"),
                 )
               )
                 
-              if len(line.get('POLLING_LOCATION_ID',""))>0:
+              if len(line.get('ID',""))>0:
                 cursor.execute(
                   "INSERT OR IGNORE INTO Precinct_Polling(precinct_id,polling_location_id) VALUES (?,?)",
                   (
                     line['ID'],
-                    line['POLLING_LOCATION_ID'],
+                    line['ID'],
                   )
                 )
               
@@ -498,13 +520,85 @@ def load_data(cursor, config):
                   )
                 )
             
-            elif i=='street_segment':
+            elif i=='street_segment' or i=='street_segment_aug':
+             
               if len(line.get('PRECINCT_SPLIT_ID',""))>0:
                 line['PRECINCT_SPLIT_ID'] = sanitize(line,'PRECINCT_SPLIT_ID')
               
+              if line.get('HOUSE_NUMBER') is not None:
+                try:
+                  line['START_HOUSE_NUMBER'] = int(line.get('HOUSE_NUMBER', 0), 10)
+                  line['END_HOUSE_NUMBER'] = int(line.get('HOUSE_NUMBER', 0), 10)
+                except:
+                  print line
+                  
               if line.get('STREET_DIRECTION','')=='NULL':
                 line['STREET_DIRECTION'] = None
-                
+              
+              if line.get('STREET_NAME','')!='*':
+                line['STREET_SUFFIX'] = line.get('STREET_NAME').split()[-1]
+                line['STREET_NAME'] = line.get('STREET_NAME').rsplit(' ', 1)[0]
+              
+              if line.get('CITY') is not None and i!='street_segment_aug':
+                if line['CITY'] == 'Bennington':
+                  if line.get('SEN_DISTRICT_NAME') == 'Benn 2-1 No Benn V':
+                    line['PRECINCT_ID'] = 15
+                  else:
+                    line['PRECINCT_ID'] = 16
+                elif line['CITY'] == 'Burlington':
+                  if line.get('WARD_NAME') == 'W1':
+                    line['PRECINCT_ID'] = 35
+                  if line.get('WARD_NAME') == 'W2':
+                    line['PRECINCT_ID'] = 36
+                  if line.get('WARD_NAME') == 'W3':
+                    line['PRECINCT_ID'] = 37
+                  if line.get('WARD_NAME') == 'W4':
+                    line['PRECINCT_ID'] = 38
+                  if line.get('WARD_NAME') == 'W5':
+                    line['PRECINCT_ID'] = 39
+                  if line.get('WARD_NAME') == 'W6':
+                    line['PRECINCT_ID'] = 40
+                  if line.get('WARD_NAME') == 'W7':
+                    line['PRECINCT_ID'] = 41
+                elif line['CITY'] == 'Colchester':
+                  if line.get('SEN_DISTRICT_NAME') == 'Chit-7-1':
+                    line['PRECINCT_ID'] = 54
+                  else:
+                    line['PRECINCT_ID'] = 55
+                elif line['CITY'] == 'Essex':
+                  if line.get('SEN_DISTRICT_NAME') == 'Chit-6-2':
+                    line['PRECINCT_ID'] = 74
+                  else:
+                    line['PRECINCT_ID'] = 73
+                elif line['CITY'] == 'Milton':
+                  if line.get('SEN_DISTRICT_NAME') == 'Chit-9':
+                    line['PRECINCT_ID'] = 131
+                  else:
+                    line['PRECINCT_ID'] = 132
+                elif line['CITY'] == 'Newbury':
+                  if line.get('SEN_DISTRICT_NAME') == 'Oran-Cal-1':
+                    line['PRECINCT_ID'] = 143
+                elif line['CITY'] == 'Rutland City':
+                  if line.get('WARD_NAME') == 'W1':
+                    line['PRECINCT_ID'] = 179
+                  if line.get('WARD_NAME') == 'W2':
+                    line['PRECINCT_ID'] = 180
+                  if line.get('WARD_NAME') == 'W3':
+                    line['PRECINCT_ID'] = 181
+                  if line.get('WARD_NAME') == 'W4':
+                    line['PRECINCT_ID'] = 182
+                elif line['CITY'] == 'Rutland Town':
+                  line['PRECINCT_ID'] = 183
+                elif line['CITY'] == 'South Burlington':
+                  if line.get('SEN_DISTRICT_NAME') == 'Chit-3-7':
+                    line['PRECINCT_ID'] = 200
+                  elif line.get('SEN_DISTRICT_NAME') == 'Chit-3-8':
+                    line['PRECINCT_ID'] = 201
+                  elif line.get('SEN_DISTRICT_NAME') == 'Chit-3-9':
+                    line['PRECINCT_ID'] = 202
+                  elif line.get('SEN_DISTRICT_NAME') == 'Chit-3-10':
+                    line['PRECINCT_ID'] = 203
+              
               cursor.execute(
                 """INSERT INTO
                   Street_Segment(
@@ -525,21 +619,21 @@ def load_data(cursor, config):
                   precinct_split_id
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
-                  line.get('ID'),
-                  line.get('START_HOUSE_NUMBER', None),
-                  line.get('END_HOUSE_NUMBER', None),
-                  line.get('ODD_EVEN_BOTH', None),
-                  line.get('START_APARTMENT_NUMBER', None),
-                  line.get('END_APARTMENT_NUMBER', None),
-                  line.get('STREET_DIRECTION', None),
-                  line.get('STREET_NAME', None),
-                  line.get('STREET_SUFFIX', None),
-                  line.get('ADDRESS_DIRECTION', None),
-                  line.get('STATE', config.get('Main', 'state_abbreviation')),
+                  None,
+                  line.get('START_HOUSE_NUMBER', '0'),
+                  line.get('END_HOUSE_NUMBER', '0'),
+                  line.get('ODD_EVEN_BOTH', 'Both'),
+                  line.get('START_APARTMENT_NUMBER'),
+                  line.get('END_APARTMENT_NUMBER'),
+                  line.get('STREET_DIRECTION'),
+                  line.get('STREET_NAME'),
+                  line.get('STREET_SUFFIX',''),
+                  line.get('ADDRESS_DIRECTION'),
+                  config.get('Main', 'state_abbreviation'),
                   line.get('CITY', ''),
                   line.get('ZIP', ''),
-                  line.get('PRECINCT_ID', None),
-                  line.get('PRECINCT_SPLIT_ID', None),
+                  line.get('PRECINCT_ID'),
+                  line.get('PRECINCT_SPLIT_ID'),
                 )
               )
               
@@ -548,26 +642,27 @@ def load_data(cursor, config):
         
         except sqlite3.IntegrityError, e:
           sys.exit("file {0}, line {1}: {2}".format(filename, reader.line_num, e))
+          
+        except:
+          print line
 
 def update_data(cursor):
   print "Updating Precinct Split data..."
   #cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
   
   print "Updating street segments..."
-  cursor.execute("UPDATE Street_Segment SET start_house_number=1, end_house_number=9999999 WHERE start_house_number=0 AND end_house_number=0")
-  cursor.execute("DELETE FROM Street_Segment WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
+#  cursor.execute("UPDATE Street_Segment SET start_house_number=1, end_house_number=9999999 WHERE start_house_number=0 AND end_house_number=0")
+#  cursor.execute("DELETE FROM Street_Segment WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
   
   print "Updating Locality election official data..."
   cursor.execute("UPDATE Locality SET election_administration_id=NULL WHERE election_administration_id NOT IN (SELECT id FROM Election_Administration)")
   
   print "Updating Polling Location data..."
-  cursor.execute("DELETE FROM Polling_Location WHERE line1 IS NULL OR line1=''")
+  #cursor.execute("DELETE FROM Polling_Location WHERE line1 IS NULL OR line1=''")
   
   print "Updating Precinct Polling data..."
   cursor.execute("DELETE FROM Precinct_Polling WHERE polling_location_id NOT IN (SELECT id FROM Polling_Location)")
   
-  print "Updating Precinct Split data..."
-  cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
 
 def get_locality(county_id, state_fips):
   ds = Datastore('/tmp/ansi.db')

@@ -31,7 +31,10 @@ def main():
     sys.exit("Please specify a valid config file")
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
-  setupdb(database, config)
+  
+  if opts.refreshdb:
+    setupdb(database, config)
+  
   datastore = Datastore(database)
   cursor = datastore.connect()
   
@@ -39,13 +42,13 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
     create_header(w, cursor, now)
     create_election(w, cursor)
-    create_election_admins(w, cursor)
-    create_election_officials(w, cursor)
+#     create_election_admins(w, cursor)
+#     create_election_officials(w, cursor)
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
     #create_precinct_splits(w, cursor, config)
@@ -116,9 +119,9 @@ def create_header(w, cursor, now):
   name = ET.SubElement(state,"name")
   name.text = row['state_name']
   
-  if row['election_administration_id'] is not None:
-    election_administration_id = ET.SubElement(state,"election_administration_id")
-    election_administration_id.text = unicode(row['election_administration_id'])
+#   if row['election_administration_id'] is not None:
+#     election_administration_id = ET.SubElement(state,"election_administration_id")
+#     election_administration_id.text = unicode(row['election_administration_id'])
   
   w.write(ET.tostring(state))
 
@@ -552,12 +555,10 @@ def create_polling_locations(w, cursor, config):
     zip
   FROM Polling_Location
   WHERE
-    line1 IS NOT NULL AND
-    line1!=?""",
+    line1 IS NOT NULL""",
     (
       config.get('Polling_Location','polling_prefix'),
       config.get('Main', 'state_abbreviation'),
-      '',
     )
   )  
 #   cursor.execute("""SELECT
@@ -625,6 +626,10 @@ def create_options_list():
       dest="config", default="config.ini",
       help="Specifies a config file",
       metavar="CONFIG_FILE"),
+    
+    make_option("--refreshdb", dest="refreshdb",
+      default=False, action="store_true",
+      help="Reloads database data"),
   ]
   
   return option_list
