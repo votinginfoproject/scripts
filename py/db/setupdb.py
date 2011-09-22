@@ -303,6 +303,9 @@ def load_data(cursor, config):
               quotechar=config.get(sect, 'quotechar'),
               quoting=QUOTE_MINIMAL
             )
+            
+            reader.fieldnames = map(str.upper, reader.fieldnames)
+            
           elif parser_type=='regex':
             reader = re.compile(config.get(sect,'regex'))
             #reader = DictReader(r, delimiter=chr(config.getint(i.title(),'delimiter')), quotechar='"', quoting=QUOTE_MINIMAL)
