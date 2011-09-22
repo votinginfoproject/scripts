@@ -489,89 +489,48 @@ def load_data(cursor, config):
                 )
             
             elif i=='street_segment':
-              if config.get('Main', 'state_abbreviation')=='DE':
-              
-                cursor.execute(
-                  """INSERT INTO
-                    Street_Segment(
-                    id,
-                    start_house_number,
-                    end_house_number,
-                    odd_even_both,
-                    start_apartment_number,
-                    end_apartment_number,
-                    street_direction,
-                    street_name,
-                    street_suffix,
-                    address_direction,
-                    state,
-                    city,
-                    zip,
-                    precinct_id,
-                    precinct_split_id
-                  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                  (
-                    line.get('ID'),
-                    line.get('START_HOUSE_NUMBER', None),
-                    line.get('END_HOUSE_NUMBER', line.get('START_HOUSE_NUMBER', None)),
-                    line.get('ODD_EVEN_BOTH', None),
-                    line.get('START_APARTMENT_NUMBER', None),
-                    line.get('END_APARTMENT_NUMBER', line.get('START_APARTMENT_NUMBER', None),
-                    line.get('STREET_DIRECTION', None),
-                    line.get('STREET_NAME', None),
-                    line.get('STREET_SUFFIX', None),
-                    line.get('ADDRESS_DIRECTION', None),
-                    line.get('STATE', config.get('Main', 'state_abbreviation')),
-                    line.get('CITY', ''),
-                    line.get('ZIP', ''),
-                    line.get('PRECINCT_ID', None),
-                    line.get('PRECINCT_SPLIT_ID', None),
-                  )
+              if len(line.get('PRECINCT_SPLIT_ID',""))>0:
+                line['PRECINCT_SPLIT_ID'] = sanitize(line,'PRECINCT_SPLIT_ID')
+            
+              if line.get('STREET_DIRECTION','')=='NULL':
+                line['STREET_DIRECTION'] = None
+              cursor.execute(
+                """INSERT INTO
+                  Street_Segment(
+                  id,
+                  start_house_number,
+                  end_house_number,
+                  odd_even_both,
+                  start_apartment_number,
+                  end_apartment_number,
+                  street_direction,
+                  street_name,
+                  street_suffix,
+                  address_direction,
+                  state,
+                  city,
+                  zip,
+                  precinct_id,
+                  precinct_split_id
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+                (
+                  line.get('ID'),
+                  line.get('START_HOUSE_NUMBER', None),
+                  line.get('END_HOUSE_NUMBER', None),
+                  line.get('ODD_EVEN_BOTH', None),
+                  line.get('START_APARTMENT_NUMBER', None),
+                  line.get('END_APARTMENT_NUMBER', None),
+                  line.get('STREET_DIRECTION', None),
+                  line.get('STREET_NAME', None),
+                  line.get('STREET_SUFFIX', None),
+                  line.get('ADDRESS_DIRECTION', None),
+                  line.get('STATE', config.get('Main', 'state_abbreviation')),
+                  line.get('CITY', ''),
+                  line.get('ZIP', ''),
+                  line.get('PRECINCT_ID', None),
+                  line.get('PRECINCT_SPLIT_ID', None),
                 )
-                
-              else:
-                if len(line.get('PRECINCT_SPLIT_ID',""))>0:
-                  line['PRECINCT_SPLIT_ID'] = sanitize(line,'PRECINCT_SPLIT_ID')
-              
-                if line.get('STREET_DIRECTION','')=='NULL':
-                  line['STREET_DIRECTION'] = None
-                cursor.execute(
-                  """INSERT INTO
-                    Street_Segment(
-                    id,
-                    start_house_number,
-                    end_house_number,
-                    odd_even_both,
-                    start_apartment_number,
-                    end_apartment_number,
-                    street_direction,
-                    street_name,
-                    street_suffix,
-                    address_direction,
-                    state,
-                    city,
-                    zip,
-                    precinct_id,
-                    precinct_split_id
-                  ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                  (
-                    line.get('ID'),
-                    line.get('START_HOUSE_NUMBER', None),
-                    line.get('END_HOUSE_NUMBER', None),
-                    line.get('ODD_EVEN_BOTH', None),
-                    line.get('START_APARTMENT_NUMBER', None),
-                    line.get('END_APARTMENT_NUMBER', None),
-                    line.get('STREET_DIRECTION', None),
-                    line.get('STREET_NAME', None),
-                    line.get('STREET_SUFFIX', None),
-                    line.get('ADDRESS_DIRECTION', None),
-                    line.get('STATE', config.get('Main', 'state_abbreviation')),
-                    line.get('CITY', ''),
-                    line.get('ZIP', ''),
-                    line.get('PRECINCT_ID', None),
-                    line.get('PRECINCT_SPLIT_ID', None),
-                  )
-                )
+              )
               
         except CSVError, e:
           sys.exit("file {0}, line {1}: {2}".format(filename, reader.line_num, e))
