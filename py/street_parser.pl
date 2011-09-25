@@ -78,7 +78,7 @@ sub get_date {
 sub output_localities {
   my $localities = shift;
   my $base_dir = shift;
-  my @output_headers = qw(id name);
+  my @output_headers = qw(id name type);
   my $headers = join("|",@output_headers);
   
   # output file
@@ -92,7 +92,7 @@ sub output_localities {
   
   foreach my $name (keys %{$localities}) {
     my @output_line;
-    push(@output_line,($localities->{$name}, $name));
+    push(@output_line,($localities->{$name}, $name, "County"));
     $csv->print($wh, \@output_line);
   }
   
@@ -164,7 +164,7 @@ if ($file) {
   my $base_dir = dirname($path) or die "Directory Not Found: $!";
   my $header;
   my @output_headers = qw(id start_house_number end_house_number odd_even_both street_direction street_name street_suffix address_direction state city zip precinct_id);
-  my $street_headers = join("|",@output_headers);
+  my $street_headers = join("|", @output_headers);
   my $localities = {};
   my $precincts = {};
   my $polling_locations = {};

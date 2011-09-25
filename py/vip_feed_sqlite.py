@@ -31,7 +31,10 @@ def main():
     sys.exit("Please specify a valid config file")
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
-  setupdb(database, config)
+  
+  if opts.refreshdb:
+    setupdb(database, config)
+    
   datastore = Datastore(database)
   cursor = datastore.connect()
   
@@ -39,7 +42,7 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
     create_header(w, cursor, now)
@@ -49,7 +52,7 @@ def main():
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
     #create_precinct_splits(w, cursor, config)
-#    create_street_segments(w, cursor, config)
+    create_street_segments(w, cursor, config)
     create_polling_locations(w, cursor, config)
     
     w.write('</vip_object>')
@@ -57,22 +60,6 @@ def main():
 def create_header(w, cursor, now):
   print "Creating source and state elements..."
   
-#   cursor.execute("""SELECT
-#     VIP_Info.source_id AS source_id,
-#     State.id AS state_id,
-#     State.name AS state_name,
-#     VIP_Info.id AS vip_id,
-#     ? AS datetime,
-#     description,
-#     organization_url,
-#     election_administration_id
-#   FROM
-#     VIP_Info,
-#     State
-#   WHERE
-#     State.id=VIP_Info.state_id
-#   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
-
   cursor.execute("""SELECT
     VIP_Info.source_id AS source_id,
     State.id AS state_id,
@@ -80,13 +67,29 @@ def create_header(w, cursor, now):
     VIP_Info.id AS vip_id,
     ? AS datetime,
     description,
-    organization_url
+    organization_url,
+    election_administration_id
   FROM
     VIP_Info,
     State
   WHERE
     State.id=VIP_Info.state_id
   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
+
+#   cursor.execute("""SELECT
+#     VIP_Info.source_id AS source_id,
+#     State.id AS state_id,
+#     State.name AS state_name,
+#     VIP_Info.id AS vip_id,
+#     ? AS datetime,
+#     description,
+#     organization_url
+#   FROM
+#     VIP_Info,
+#     State
+#   WHERE
+#     State.id=VIP_Info.state_id
+#   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
 
   row = cursor.fetchone()
   
@@ -116,9 +119,9 @@ def create_header(w, cursor, now):
   name = ET.SubElement(state,"name")
   name.text = row['state_name']
   
-  if row['election_administration_id'] is not None:
-    election_administration_id = ET.SubElement(state,"election_administration_id")
-    election_administration_id.text = unicode(row['election_administration_id'])
+#   if row['election_administration_id'] is not None and len(row['election_administration_id'])>0:
+#     election_administration_id = ET.SubElement(state,"election_administration_id")
+#     election_administration_id.text = unicode(row['election_administration_id'])
   
   w.write(ET.tostring(state))
 
@@ -491,6 +494,10 @@ def create_street_segments(w, cursor, config):
       
       end_house_number = ET.SubElement(root,"end_house_number")  
       end_house_number.text = end
+      
+    else:
+      print "Skipping row: ", row
+      continue
     
     if len(row['odd_even_both'])>0:
       odd_even_both = ET.SubElement(root,"odd_even_both")
@@ -620,6 +627,10 @@ def create_options_list():
     make_option("-v", "--verbose", dest="verbose",
       default=False, action="store_true",
       help="Write status messages to stdout"),
+    
+    make_option("--refreshdb", dest="refreshdb",
+      default=False, action="store_true",
+      help="Reloads data into the database"),
 
     make_option("--config", type="string",
       dest="config", default="config.ini",

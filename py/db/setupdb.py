@@ -278,7 +278,7 @@ def load_data(cursor, config):
     'polling_location',
     'precinct',
     'precinct_split',
-#    'street_segment',
+    'street_segment',
   )
   
   for i in possible_data:
@@ -403,12 +403,17 @@ def load_data(cursor, config):
                   line['ID'],
                   line.get('NAME'),
                   line.get('STATE_ID', config.get('Main','fips')),
-                  line.get('TYPE'),
+                  line.get('TYPE', "County"),
                   line.get('ELECTION_ADMINISTRATION_ID'),
                 )
               )
             
             elif i=='polling_location':
+              try:
+                line['ID'] = int(line['ID'])
+              except:
+                continue
+              
               cursor.execute(
                 """INSERT OR IGNORE INTO
                   Polling_Location(
@@ -430,6 +435,11 @@ def load_data(cursor, config):
               )
               
             elif i=='precinct':
+              try:
+                line['ID'] = int(line['ID'])
+              except:
+                continue
+                
               cursor.execute(
                 "INSERT OR IGNORE INTO Precinct(id,name,locality_id,mail_only) VALUES (?,?,?,?)",
                 (
@@ -492,11 +502,20 @@ def load_data(cursor, config):
                 )
             
             elif i=='street_segment':
+              try:
+                line['START_HOUSE_NUMBER'] = line.get('START_HOUSE_NUMBER',0).split('-')[0]
+                line['START_HOUSE_NUMBER'] = int(line.get('START_HOUSE_NUMBER'))
+                line['END_HOUSE_NUMBER'] = line.get('END_HOUSE_NUMBER',0).split('-')[0]
+                line['END_HOUSE_NUMBER'] = int(line.get('END_HOUSE_NUMBER'))
+              except:
+                print "Broke on line: ", line
+                
               if len(line.get('PRECINCT_SPLIT_ID',""))>0:
                 line['PRECINCT_SPLIT_ID'] = sanitize(line,'PRECINCT_SPLIT_ID')
             
               if line.get('STREET_DIRECTION','')=='NULL':
                 line['STREET_DIRECTION'] = None
+              
               cursor.execute(
                 """INSERT INTO
                   Street_Segment(
@@ -518,8 +537,8 @@ def load_data(cursor, config):
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                   line.get('ID'),
-                  line.get('START_HOUSE_NUMBER', None),
-                  line.get('END_HOUSE_NUMBER', None),
+                  line.get('START_HOUSE_NUMBER', 0),
+                  line.get('END_HOUSE_NUMBER', 0),
                   line.get('ODD_EVEN_BOTH', None),
                   line.get('START_APARTMENT_NUMBER', None),
                   line.get('END_APARTMENT_NUMBER', None),
@@ -544,10 +563,6 @@ def load_data(cursor, config):
 def update_data(cursor):
   print "Updating Precinct Split data..."
   #cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
-  
-  print "Updating street segments..."
-  cursor.execute("UPDATE Street_Segment SET start_house_number=1, end_house_number=9999999 WHERE start_house_number=0 AND end_house_number=0")
-  cursor.execute("DELETE FROM Street_Segment WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
   
   print "Updating Locality election official data..."
   cursor.execute("UPDATE Locality SET election_administration_id=NULL WHERE election_administration_id NOT IN (SELECT id FROM Election_Administration)")
