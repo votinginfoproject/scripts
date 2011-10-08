@@ -39,7 +39,7 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
     create_header(w, cursor, now)
@@ -57,22 +57,6 @@ def main():
 def create_header(w, cursor, now):
   print "Creating source and state elements..."
   
-#   cursor.execute("""SELECT
-#     VIP_Info.source_id AS source_id,
-#     State.id AS state_id,
-#     State.name AS state_name,
-#     VIP_Info.id AS vip_id,
-#     ? AS datetime,
-#     description,
-#     organization_url,
-#     election_administration_id
-#   FROM
-#     VIP_Info,
-#     State
-#   WHERE
-#     State.id=VIP_Info.state_id
-#   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
-
   cursor.execute("""SELECT
     VIP_Info.source_id AS source_id,
     State.id AS state_id,
@@ -80,7 +64,8 @@ def create_header(w, cursor, now):
     VIP_Info.id AS vip_id,
     ? AS datetime,
     description,
-    organization_url
+    organization_url,
+    election_administration_id
   FROM
     VIP_Info,
     State
@@ -88,8 +73,23 @@ def create_header(w, cursor, now):
     State.id=VIP_Info.state_id
   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
 
+#   cursor.execute("""SELECT
+#     VIP_Info.source_id AS source_id,
+#     State.id AS state_id,
+#     State.name AS state_name,
+#     VIP_Info.id AS vip_id,
+#     ? AS datetime,
+#     description,
+#     organization_url
+#   FROM
+#     VIP_Info,
+#     State
+#   WHERE
+#     State.id=VIP_Info.state_id
+#   """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
+
   row = cursor.fetchone()
-  
+  print row
   root = ET.Element("source",id=unicode(row['source_id']))
   
   vip_id = ET.SubElement(root,"vip_id")
@@ -115,11 +115,7 @@ def create_header(w, cursor, now):
   
   name = ET.SubElement(state,"name")
   name.text = row['state_name']
-  
-  if row['election_administration_id'] is not None:
-    election_administration_id = ET.SubElement(state,"election_administration_id")
-    election_administration_id.text = unicode(row['election_administration_id'])
-  
+    
   w.write(ET.tostring(state))
 
 def create_election(w, cursor):
@@ -449,7 +445,7 @@ def create_street_segments(w, cursor, config):
       CASE
         WHEN odd_even_both='O' THEN 'Odd'
         WHEN odd_even_both='E' THEN 'Even'
-        WHEN odd_even_both='A' THEN 'Both'
+        WHEN odd_even_both='B' THEN 'Both'
         ELSE odd_even_both
       END AS odd_even_both,
       start_apartment_number,
@@ -458,7 +454,7 @@ def create_street_segments(w, cursor, config):
       street_name,
       street_suffix,
       address_direction,
-      state,
+      ? AS state,
       city,
       zip,
       ?||p.id AS precinct_id
@@ -469,7 +465,8 @@ def create_street_segments(w, cursor, config):
       l.id = p.locality_id AND
       s.street_name IS NOT NULL""",
     (
-      config.get('Street_Segment','street_prefix'),    
+      config.get('Street_Segment','street_prefix'),
+      config.get('Main', 'state_abbreviation'),
       config.get('Precinct','precinct_prefix'),
     )
   )
