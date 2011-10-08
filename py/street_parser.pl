@@ -179,7 +179,7 @@ if ($file) {
   );  
   
   # output file                                                                                                                                                                                                 
-  open my $wh, ">", "$base_dir/street_segment_mod.txt" or die "$base_dir/street_segment_mod.txt: $!";
+  open my $wh, ">", "$base_dir/street_segment.txt" or die "$base_dir/street_segment.txt: $!";
   my $csv = Text::CSV_XS->new ({
     eol => $/,
     sep_char => "|"
@@ -216,7 +216,7 @@ if ($file) {
       };
     }
     
-    if($csv_line->{'unassigned1'} eq "*") {
+    if($csv_line->{'unassigned1'} =~ /\*/) {
       if(!exists $cities->{$csv_line->{'house_district'} . $csv_line->{'precinct_id'}}) {
         $cities->{$csv_line->{'house_district'} . $csv_line->{'precinct_id'}} = {
           id => $csv_line->{'id'},
@@ -225,54 +225,55 @@ if ($file) {
           odd_even_both => "both",
           street_direction => $csv_line->{'street_direction'},
           street_name => "*",
-          street_suffix => $csv_line->{'street_suffix'},
+          street_suffix => $csv_line->{'street_type'},
           address_direction => $csv_line->{'address_direction'},
-          state => $csv_line->{'state'},
+          state => "AK",
           city => $csv_line->{'city'},
           zip => $csv_line->{'zip'},
           precinct_id => $csv_line->{'house_district'} . $csv_line->{'precinct_id'},
         };
-        next;
       }
+      
+      next;
     }
     
     push(@output_line, (
       $csv_line->{'id'},
       $csv_line->{'start_house_number'} || 1,
       $csv_line->{'end_house_number'} || 999999,
-      $csv_line->{'odd_even_both'},
+      $csv_line->{'odd_even_both'} || "both",
       $csv_line->{'street_direction'},
       $csv_line->{'street_name'},
-      $csv_line->{'street_suffix'},
+      $csv_line->{'street_type'},
       $csv_line->{'address_direction'},
       $csv_line->{'state'},
       $csv_line->{'city'},
       $csv_line->{'zip'},
-      $csv_line->{'precinct_id'} . $csv_line->{'house_district'},
+      $csv_line->{'house_district'} . $csv_line->{'precinct_id'},
     ));
     
     $csv->print($wh, \@output_line);
   }
   
-  foreach my $key (keys %{$cities}) {
-    my @output_line;
-    push(@output_line, (
-      $cities->{$key}->{'id'},
-      $cities->{$key}->{'start_house_number'},
-      $cities->{$key}->{'end_house_number'},
-      $cities->{$key}->{'odd_even_both'},
-      $cities->{$key}->{'street_direction'},
-      $cities->{$key}->{'street_name'},
-      $cities->{$key}->{'street_suffix'},
-      $cities->{$key}->{'address_direction'},
-      $cities->{$key}->{'state'},
-      $cities->{$key}->{'city'},
-      $cities->{$key}->{'zip'},
-      $cities->{$key}->{'precinct_id'},
-    ));
-
-    $csv->print($wh, \@output_line);
-  }
+#   foreach my $key (keys %{$cities}) {
+#     my @output_line;
+#     push(@output_line, (
+#       $cities->{$key}->{'id'},
+#       $cities->{$key}->{'start_house_number'},
+#       $cities->{$key}->{'end_house_number'},
+#       $cities->{$key}->{'odd_even_both'},
+#       $cities->{$key}->{'street_direction'},
+#       $cities->{$key}->{'street_name'},
+#       $cities->{$key}->{'street_suffix'},
+#       $cities->{$key}->{'address_direction'},
+#       $cities->{$key}->{'state'},
+#       $cities->{$key}->{'city'},
+#       $cities->{$key}->{'zip'},
+#       $cities->{$key}->{'precinct_id'},
+#     ));
+# 
+#     $csv->print($wh, \@output_line);
+#   }
   
   close $wh or die "localities.txt: $!";
   
