@@ -31,7 +31,10 @@ def main():
     sys.exit("Please specify a valid config file")
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
-  setupdb(database, config)
+  
+  if opts.refreshdb:
+    setupdb(database, config)
+  
   datastore = Datastore(database)
   cursor = datastore.connect()
   
@@ -39,7 +42,7 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.3.xsd" schemaVersion="2.3">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
     create_header(w, cursor, now)
@@ -110,7 +113,7 @@ def create_header(w, cursor, now):
 def create_election(w, cursor):
   print "Creating election elements..."
   
-  cursor.execute("SELECT * FROM Election")
+  cursor.execute("SELECT * FROM Election LIMIT 1")
   
   for row in cursor:
     root = ET.Element("election",id=unicode(row['id']))
@@ -571,6 +574,10 @@ def create_options_list():
       dest="config", default="config.ini",
       help="Specifies a config file",
       metavar="CONFIG_FILE"),
+    
+    make_option("--refreshdb", dest="refreshdb",
+      default=False, action="store_true",
+      help="Reloads database"),
   ]
   
   return option_list

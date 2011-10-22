@@ -321,9 +321,10 @@ def load_data(cursor, config):
             try:
               line.update(zip(line.iterkeys(), map(str.strip, line.itervalues())))
               line.update(zip(line.iterkeys(), map(escape, line.itervalues())))
-            except:
+            except Exception, e:
               # if this fails, print the offending line
               print line
+              sys.exit("file {0}, line {1}: {2}".format(filename, reader.line_num, e))
 
             if i=='source':
               cursor.execute(
@@ -332,7 +333,7 @@ def load_data(cursor, config):
                   line['VIP_ID'],
                   line['ID'],
                   line['DESCRIPTION'],
-                  line.get('STATE_ID', config.get('Main','fips')),
+                  config.get('Main','fips'),
                 )
               )
               
@@ -345,7 +346,7 @@ def load_data(cursor, config):
                   line.get('EO_ID', None),
                   line.get('MAILING_ADDRESS', None),
                   line.get('CITY', None),
-                  line.get('STATE', None),
+                  config.get('Main', 'state_abbreviation'),
                   line.get('ZIP', None),
                   line.get('ZIP_PLUS', None),
                   line.get('ELECTIONS_URL', None),
@@ -360,7 +361,7 @@ def load_data(cursor, config):
               cursor.execute(
                 "INSERT INTO State(id,name,election_administration_id,organization_url) VALUES (?,?,?,?)",
                 (
-                  line.get('ID', config.get('Main','fips')),
+                  config.get('Main','fips'),
                   line.get('NAME'),
                   line.get('ELECTION_ADMINISTRATION_ID'),
                   line.get('ORGANIZATION_URL',''),
@@ -374,7 +375,7 @@ def load_data(cursor, config):
                   line['ID'],
                   datetime.strptime(line.get('DATE'), config.get('Main','time_format')).strftime('%Y-%m-%d'),
                   line.get('ELECTION_TYPE', "General"),
-                  line.get('STATE_ID', config.get('Main','fips')),
+                  config.get('Main','fips'),
                   line.get('STATEWIDE', "Yes"),
                   line.get('REGISTRATION_INFO', None),
                 )
@@ -399,13 +400,16 @@ def load_data(cursor, config):
                 (
                   line['ID'],
                   line.get('NAME'),
-                  line.get('STATE_ID', config.get('Main','fips')),
+                  config.get('Main','fips'),
                   line.get('TYPE'),
                   line.get('ELECTION_ADMINISTRATION_ID'),
                 )
               )
             
             elif i=='polling_location':
+              if line.get('ROWNUMBER')==1:
+                continue
+              
               cursor.execute(
                 "INSERT OR IGNORE INTO Polling_Location(id,location_name,line1,city,state,zip) VALUES (?,?,?,?,?,?)",
                 (
@@ -518,7 +522,7 @@ def load_data(cursor, config):
                     line.get('STREET_NAME', None),
                     line.get('STREET_SUFFIX', None),
                     line.get('ADDRESS_DIRECTION', None),
-                    line.get('STATE', config.get('Main', 'state_abbreviation')),
+                    config.get('Main', 'state_abbreviation'),
                     line.get('CITY', None),
                     line.get('ZIP', None),
                     line.get('PRECINCT_ID', None),
