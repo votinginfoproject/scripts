@@ -7,7 +7,7 @@ import xml.etree.cElementTree as ET
 from datastore import Datastore
 from csv import DictReader, QUOTE_MINIMAL, Error as CSVError
 from datetime import datetime, tzinfo
-from utils import get_files
+#from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
 def setupdb(filepath, config):
