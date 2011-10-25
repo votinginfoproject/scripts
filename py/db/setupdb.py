@@ -2,6 +2,7 @@ import sys, re
 import datetime
 import os.path
 import glob
+import fnmatch
 import sqlite3
 import xml.etree.cElementTree as ET
 from datastore import Datastore
@@ -266,7 +267,7 @@ def get_line(r, reader, parser_type):
       yield groups
       
 def load_data(cursor, config):
-  file_tmpl = '{0}{1}.txt'
+  file_tmpl = '{0}.txt'
   
   possible_data = (
     'source',
@@ -282,7 +283,12 @@ def load_data(cursor, config):
   )
   
   for i in possible_data:
-    filename = file_tmpl.format(config.get('Main','data_dir'),i)
+    filename = file_tmpl.format(i)
+
+    for file in os.listdir(config.get('Main','data_dir')):
+      if fnmatch.fnmatch(file.lower(), filename):
+        filename = '{0}{1}'.format(config.get('Main','data_dir'),file)
+
     print "Currently looking at {0}".format(i)
     if os.path.exists(filename):
       with open(filename,'r') as r:
