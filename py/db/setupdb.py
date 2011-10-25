@@ -384,7 +384,7 @@ def load_data(cursor, config):
               cursor.execute(
                 "INSERT OR IGNORE INTO Election(id,date,election_type,state_id,statewide,registration_info) VALUES (?,?,?,?,?,?)",
                 (
-                  line['ID'],
+                  line['ELECTIONID'],
                   datetime.strptime(line.get('DATE'), config.get('Main','time_format')).strftime('%Y-%m-%d'),
                   line.get('ELECTION_TYPE', "General"),
                   line.get('STATE_ID', config.get('Main','fips')),

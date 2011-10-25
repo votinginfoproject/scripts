@@ -141,7 +141,8 @@ def create_election(w, cursor, config):
     state_id,
     registration_info
   FROM
-    Election""",
+    Election
+  LIMIT 1""",
     (
       config.get('Election', 'election_prefix'),
     )
