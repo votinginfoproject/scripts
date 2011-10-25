@@ -32,7 +32,7 @@ def main():
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
   
-  if opts.refresh_db:
+  if opts.refreshdb:
     setupdb(database, config)
     
   datastore = Datastore(database)
@@ -661,7 +661,7 @@ def create_options_list():
       help="Specifies a config file",
       metavar="CONFIG_FILE"),
     
-    make_option("", "--refresh-db", dest="refresh_db",
+    make_option("", "--refreshdb", dest="refreshdb",
       default=False, action="store_true",
       help="Reload the database"),
   ]
