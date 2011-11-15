@@ -108,15 +108,15 @@ if ($file) {
     my @output_line;
     
     # because the reader eats the header, line number starts at '2'                                                                                                                                             
-    if ($. == 1) {
-      print $wh "$polling_headers" . "\n";
-    }
+#     if ($. == 1) {
+#       print $wh "$polling_headers" . "\n";
+#     }
         
     if($csv_line->{'site_type'} eq "P") {
       push(@output_line, (
         $csv_line->{'id'},
-        $csv_line->{'location_name'} || 1,
-        $csv_line->{'line1'} || 999999,
+        $csv_line->{'name'},
+        $csv_line->{'line1'},
         $csv_line->{'city'},
         "AK",
         "",
