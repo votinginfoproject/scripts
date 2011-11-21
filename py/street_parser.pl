@@ -79,7 +79,7 @@ sub output_localities {
   my $localities = shift;
   my $base_dir = shift;
   my @output_headers = qw(id name type);
-  my $headers = join("|",@output_headers);
+  my $headers = join("|", @output_headers);
   
   # output file
   open my $wh, ">", "$base_dir/locality.txt" or die "$base_dir/locality.txt: $!";
@@ -165,7 +165,8 @@ if ($file) {
   my $header;
   my @output_headers = qw(id start_house_number end_house_number odd_even_both street_direction street_name street_suffix address_direction state city zip precinct_id);
   my $street_headers = join("|", @output_headers);
-  
+  my $localities = { 'K' => { 'id' => 10001, 'name' => "Kent" }, 'N' => { 'id' => 10003, 'name' => "New Castle" }, 'S' => { 'id' => 10005, 'name' => "Sussex" } };
+
   # set up the CSV reader
   my $fh = Tie::Handle::CSV->new(
     $file,
@@ -175,14 +176,14 @@ if ($file) {
   );
   
   # output file
-  open my $wh, ">", "$base_dir/street_segment_new.txt" or die "$base_dir/street_segment_new.txt: $!";
+  open my $wh, ">", "$base_dir/street_segment.txt" or die "$base_dir/street_segment.txt: $!";
+  open my $eh, ">", "$base_dir/street_segment.err" or die "$base_dir/street_segment.err: $!";
   my $csv = Text::CSV_XS->new ({
     eol => $/,
     sep_char => "|"
   });
 
   $header = $fh->header;
-  
   
   # read from file
   while (my $csv_line = <$fh>) {
@@ -217,7 +218,8 @@ if ($file) {
     if(scalar $hashref) {
       foreach my $el (@output_headers) {
         if($el eq 'id') {
-          push(@output_line, $.);
+#          push(@output_line, $localities->{$csv_line->{'county'}}->{'id'} . $csv_line->{'ed'} . $csv_line->{'rd'});
+          push(@output_line, $csv_line->{'id'});
         }
 
         if($el eq 'start_house_number' || $el eq 'end_house_number') {
@@ -265,19 +267,23 @@ if ($file) {
         if($el eq 'precinct_id') {
           push(@output_line, $csv_line->{'ed'} . $csv_line->{'rd'} || "");
         }
-        
       }
-      
       
       $csv->print($wh, \@output_line);
       
     } else {
+
+      foreach my $key (keys %{$csv_line}) {
+        push(@output_line, $csv_line->{$key});
+      }
+      my $err_line = join('|', @output_line);
+      print $eh "$err_line" . "\n";
       next;
     }
   }
   
   close $wh or die "street_segment.txt: $!";
-  
+  close $eh or die "street_segment.err: $!";
 #  output_localities($localities, $base_dir);
 #  output_precincts($precincts, $base_dir);
 #  output_polling_locations($polling_locations, $base_dir);
