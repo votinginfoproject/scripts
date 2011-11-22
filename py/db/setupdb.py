@@ -415,7 +415,7 @@ def load_data(cursor, config):
                 continue
               
               cursor.execute(
-                """INSERT OR IGNORE INTO
+                """INSERT INTO
                   Polling_Location(
                   id,
                   location_name,
@@ -508,7 +508,7 @@ def load_data(cursor, config):
                 line['END_HOUSE_NUMBER'] = line.get('END_HOUSE_NUMBER',0).split('-')[0]
                 line['END_HOUSE_NUMBER'] = int(line.get('END_HOUSE_NUMBER'))
               except:
-                print "Broke on line: ", line
+                pass #print "Broke on line: ", line
                 
               if len(line.get('PRECINCT_SPLIT_ID',""))>0:
                 line['PRECINCT_SPLIT_ID'] = sanitize(line,'PRECINCT_SPLIT_ID')
@@ -561,20 +561,21 @@ def load_data(cursor, config):
           sys.exit("file {0}, line {1}: {2}".format(filename, reader.line_num, e))
 
 def update_data(cursor):
-  print "Updating Precinct Split data..."
-  #cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
-  
-  print "Updating Locality election official data..."
-  cursor.execute("UPDATE Locality SET election_administration_id=NULL WHERE election_administration_id NOT IN (SELECT id FROM Election_Administration)")
-  
-  print "Updating Polling Location data..."
-  cursor.execute("DELETE FROM Polling_Location WHERE line1 IS NULL OR line1=''")
-  
-  print "Updating Precinct Polling data..."
-  cursor.execute("DELETE FROM Precinct_Polling WHERE polling_location_id NOT IN (SELECT id FROM Polling_Location)")
-  
-  print "Updating Precinct Split data..."
-  cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
+  pass
+#   print "Updating Precinct Split data..."
+#   cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
+#   
+#   print "Updating Locality election official data..."
+#   cursor.execute("UPDATE Locality SET election_administration_id=NULL WHERE election_administration_id NOT IN (SELECT id FROM Election_Administration)")
+#   
+#   print "Updating Polling Location data..."
+#   cursor.execute("DELETE FROM Polling_Location WHERE line1 IS NULL OR line1=''")
+#   
+#   print "Updating Precinct Polling data..."
+#   cursor.execute("DELETE FROM Precinct_Polling WHERE polling_location_id NOT IN (SELECT id FROM Polling_Location)")
+#   
+#   print "Updating Precinct Split data..."
+#   cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
 
 def get_locality(county_id, state_fips):
   ds = Datastore('/tmp/ansi.db')
