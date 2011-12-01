@@ -94,7 +94,7 @@ if ($file) {
   );  
   
   # output file                                                                                                                                                                                                 
-  open my $wh, ">", "$base_dir/polling_location_mod.txt" or die "$base_dir/polling_location_mod.txt: $!";
+  open my $wh, ">", "$base_dir/polling_location.txt" or die "$base_dir/polling_location.txt: $!";
   my $csv = Text::CSV_XS->new ({
     eol => $/,
     sep_char => "|"
@@ -108,9 +108,9 @@ if ($file) {
     my @output_line;
     
     # because the reader eats the header, line number starts at '2'                                                                                                                                             
-#     if ($. == 1) {
-#       print $wh "$polling_headers" . "\n";
-#     }
+    if ($. == 1) {
+      print $wh "$polling_headers" . "\n";
+    }
         
     if($csv_line->{'site_type'} eq "P") {
       push(@output_line, (
@@ -126,7 +126,7 @@ if ($file) {
     }
   }
   
-  close $wh or die "localities.txt: $!";
+  close $wh or die "$base_dir/polling_location.txt: $!";
  
 }
 
