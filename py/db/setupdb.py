@@ -7,7 +7,6 @@ from datastore import Datastore
 import xml.etree.cElementTree as ET
 from csv import DictReader, QUOTE_MINIMAL, Error as CSVError
 from datetime import datetime, tzinfo
-from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
 def setupdb(filepath, config):
@@ -507,6 +506,13 @@ def load_data(cursor, config):
               if len(line.get('PRECINCT_SPLIT_ID',""))>0:
                 line['PRECINCT_SPLIT_ID'] = sanitize(line,'PRECINCT_SPLIT_ID')
               
+              try:
+                line['START_HOUSE_NUMBER'] = int(line['START_HOUSE_NUMBER'], 10)
+                line['END_HOUSE_NUMBER'] = int(line['END_HOUSE_NUMBER'], 10)
+              except:
+                print "Start or End House Number Integer Conversion Issues: {0}".format(line)
+                continue
+
               line['STREET_SUFFIX'] = line['STREET_NAME'].split(None)[-1]
               line['STREET_NAME'] = " ".join(line['STREET_NAME'].split(None)[:-1])
               

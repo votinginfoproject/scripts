@@ -9,7 +9,6 @@ from db.setupdb import setupdb
 from datetime import datetime, tzinfo
 from optparse import OptionParser,make_option
 from ConfigParser import SafeConfigParser
-from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
 def main():
@@ -39,7 +38,7 @@ def main():
   
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.2a.xsd" schemaVersion="2.2">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
     create_header(w, cursor, now)
