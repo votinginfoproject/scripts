@@ -9,7 +9,6 @@ from db.setupdb import setupdb
 from datetime import datetime, tzinfo
 from optparse import OptionParser,make_option
 from ConfigParser import SafeConfigParser
-from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
 def main():
@@ -31,7 +30,10 @@ def main():
     sys.exit("Please specify a valid config file")
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
-  setupdb(database, config)
+
+  if opts.refreshdb:
+    setupdb(database, config)
+
   datastore = Datastore(database)
   cursor = datastore.connect()
   
@@ -547,14 +549,14 @@ def create_polling_locations(w, cursor, config):
     city,
     ? AS state,
     zip
-  FROM Polling_Location
-  WHERE
-    line1 IS NOT NULL AND
-    line1!=?""",
+  FROM Polling_Location""",
+#  WHERE
+#    line1 IS NOT NULL AND
+#    line1!=?""",
     (
       config.get('Polling_Location','polling_prefix'),
       config.get('Main', 'state_abbreviation'),
-      '',
+#      '',
     )
   )  
 #   cursor.execute("""SELECT
@@ -587,9 +589,9 @@ def create_polling_locations(w, cursor, config):
     
     address = ET.SubElement(root,"address")
     
-    if row['location_name'] is not None:
-      location_name = ET.SubElement(address,"location_name")
-      location_name.text = escape(row['location_name'])
+
+    location_name = ET.SubElement(address,"location_name")
+    location_name.text = escape(row['location_name'] or "")
     
     line1 = ET.SubElement(address,"line1")
     line1.text = escape(row['line1'])
@@ -622,6 +624,10 @@ def create_options_list():
       dest="config", default="config.ini",
       help="Specifies a config file",
       metavar="CONFIG_FILE"),
+
+    make_option("--refreshdb", dest="refreshdb",
+      default=False, action="store_true",
+      help="Forces a database refresh"),
   ]
   
   return option_list

@@ -208,6 +208,8 @@ if ($file) {
       # ...which doesn't help in this case
     }
     
+    $csv_line->{'precinct_id'} = sprintf("%03d", $csv_line->{'precinct_id'});
+
     if(!exists $precincts->{$localities->{$csv_line->{'house_district'}} . $csv_line->{'precinct_id'}}) {
       $precincts->{$localities->{$csv_line->{'house_district'}} . $csv_line->{'precinct_id'}} = {
         name => "House District " . $csv_line->{'house_district'} . " Precinct " . $csv_line->{'precinct_id'},
