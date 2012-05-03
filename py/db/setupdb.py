@@ -7,7 +7,6 @@ from datastore import Datastore
 import xml.etree.cElementTree as ET
 from csv import DictReader, QUOTE_MINIMAL, Error as CSVError
 from datetime import datetime, tzinfo
-from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
 def setupdb(filepath, config):
@@ -546,7 +545,7 @@ def load_data(cursor, config):
                   line.get('STREET_NAME', None),
                   line.get('STREET_SUFFIX', None),
                   line.get('ADDRESS_DIRECTION', None),
-                  line.get('STATE', config.get('Main', 'state_abbreviation')),
+                  config.get('Main', 'state_abbreviation'),
                   line.get('CITY', ''),
                   line.get('ZIP', ''),
                   line.get('PRECINCT_ID', None),
