@@ -117,8 +117,20 @@ success_headers = ('registered address', 'polling location', )
 
 args = parser.parse_args()
 reader = csv.reader(args.input, delimiter='|')
-error_log = csv.DictWriter(args.error, fieldnames=error_headers, extrasaction='ignore', delimiter='|', quoting=csv.QUOTE_MINIMAL)
-success_log = csv.DictWriter(args.success, fieldnames=success_headers, extrasaction='ignore', delimiter='|', quoting=csv.QUOTE_MINIMAL)
+error_log = csv.DictWriter(
+    args.error,
+    fieldnames=error_headers,
+    extrasaction='ignore',
+    delimiter='|',
+    quoting=csv.QUOTE_MINIMAL
+)
+success_log = csv.DictWriter(
+    args.success,
+    fieldnames=success_headers,
+    extrasaction='ignore',
+    delimiter='|',
+    quoting=csv.QUOTE_MINIMAL
+)
 
 responses = (hit_api(line[0]) for line in reader) #returns tuple
 parsed_responses = (parse_response(response) for response in responses) #returns dict
