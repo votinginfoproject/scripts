@@ -575,6 +575,42 @@ def update_data(cursor):
   print "Updating Precinct Split data..."
   cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
 
+  print "Updating Street Segment data..."
+  cursor.execute("""
+    DELETE
+      FROM Street_Segment
+    WHERE Street_Segment.id IN (
+      SELECT s.id
+        FROM Street_Segment AS s
+      WHERE Exists (
+        SELECT precinct_id, street_name, street_direction, address_direction, street_suffix, start_house_number, COUNT(id)
+          FROM Street_Segment
+        WHERE Street_Segment.precinct_id = s.precinct_id
+        AND Street_Segment.street_name = s.street_name
+        AND Street_Segment.street_suffix = s.street_suffix
+        AND Street_Segment.start_house_number = s.start_house_number
+        AND Street_Segment.street_direction = s.street_direction
+        AND Street_Segment.address_direction = s.address_direction
+        GROUP BY Street_Segment.precinct_id, Street_Segment.street_name
+        HAVING Count(Street_Segment.id) > 1
+      )
+    )
+    AND Street_Segment.id NOT IN (
+      SELECT Min(id)
+        FROM Street_Segment AS s
+      WHERE Exists (
+        SELECT precinct_id, street_name, street_direction, address_direction, street_suffix, start_house_number, COUNT(id)
+          FROM Street_Segment
+        WHERE Street_Segment.precinct_id = s.precinct_id
+        AND Street_Segment.street_name = s.street_name
+        AND Street_Segment.street_suffix = s.street_suffix
+        AND Street_Segment.street_direction = s.street_direction
+        AND Street_Segment.address_direction = s.address_direction
+        GROUP BY Street_Segment.precinct_id, Street_Segment.street_name
+        HAVING Count(Street_Segment.id) > 1
+    ) GROUP BY precinct_id, street_name)
+  """)
+
 def get_locality(county_id, state_fips):
   ds = Datastore('/tmp/ansi.db')
   c = ds.connect()
