@@ -24,7 +24,7 @@ def hit_api(address):
     address -- A string of a voter's registered address
 
     """
-    base_url = "http://pollinglocation.apis.google.com/"
+    base_url = "https://pollinglocation.googleapis.com/"
     query = "{0}?apiversion={1}&electionid={2}&q={3}".format(
         base_url,
         "1.1",
