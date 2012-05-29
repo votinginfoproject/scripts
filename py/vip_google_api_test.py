@@ -41,7 +41,10 @@ def hit_api(address):
         response = json.load(urllib2.urlopen(request, None, 3))
         return (address, response,)
     except urllib2.URLError as e:
-        return (address, e,)
+        return (address, { 'locations': '', 'error': e, 'status': 'API_ERROR' },)
+    except Exception as e:
+        # Something more low level
+        return (address, { 'locations': '', 'error': e, 'status': 'API_ERROR' },)
 
 def parse_response(unparsed):
     """Parses out the API response into a dict to be consumed by the logger.
