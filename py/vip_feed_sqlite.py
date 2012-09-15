@@ -9,7 +9,6 @@ from db.setupdb import setupdb
 from datetime import datetime, tzinfo
 from optparse import OptionParser,make_option
 from ConfigParser import SafeConfigParser
-from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
 def main():

@@ -144,7 +144,7 @@ if ($file) {
     $file,
     header => 1,
     key_case => 'lower',
-    sep_char => ','
+    sep_char => '|'
   );
   
   # output file

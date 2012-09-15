@@ -208,9 +208,9 @@ if ($file) {
 
     $address = join(" ",
       trim($address),
-      $csv_line->{'city'},
+      $csv_line->{'home-city'},
       'DE' . ",",
-      $csv_line->{'zip'}
+      $csv_line->{'home-zipcode'}
     );
     
     $hashref = Geo::StreetAddress::US->parse_location($address);
@@ -219,7 +219,7 @@ if ($file) {
       foreach my $el (@output_headers) {
         if($el eq 'id') {
 #          push(@output_line, $localities->{$csv_line->{'county'}}->{'id'} . $csv_line->{'ed'} . $csv_line->{'rd'});
-          push(@output_line, $csv_line->{'id'});
+          push(@output_line, $csv_line->{'unique-id'});
         }
 
         if($el eq 'start_house_number' || $el eq 'end_house_number') {
