@@ -174,9 +174,8 @@ def create_election_admins(w, cursor):
   
   cursor.execute("""SELECT *
     FROM
-      Election_Administration AS ea, Election_Official AS eo
-    WHERE
-      eo.id = ea.eo_id""")
+      Election_Administration
+    """)
 
   for row in cursor:
     root = ET.Element("election_administration",id=unicode(row['id']))
