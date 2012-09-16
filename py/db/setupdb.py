@@ -147,6 +147,7 @@ id INTEGER PRIMARY KEY,
 name TEXT,
 eo_id INTEGER,
 mailing_address TEXT,
+physical_address TEXT,
 city TEXT,
 state TEXT,
 zip TEXT,
@@ -329,7 +330,8 @@ def load_data(cursor, config):
               line.update(zip(line.iterkeys(), map(str.strip, line.itervalues())))
               line.update(zip(line.iterkeys(), map(escape, line.itervalues())))
             except:
-              print line
+              pass
+#              print line
               
             if i=='source':
               cursor.execute(
@@ -345,14 +347,15 @@ def load_data(cursor, config):
             elif i=='election_administration':
               # ID|name|eo_id|ovc_id|Physical_Address|Mailing_Address|elections_url|Registration_url|AM_i_registered_url|Absentee_url|Where_do_i_vote_url|What_is_on_my_ballot_url|Rules_url|voter_services|hours
               cursor.execute(
-                "INSERT INTO Election_Administration(id,name,eo_id,mailing_address,city,state,zip,zip_plus,elections_url,registration_url,am_i_registered_url,absentee_url,where_do_i_vote_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO Election_Administration(id,name,eo_id,physical_address,mailing_address,city,state,zip,zip_plus,elections_url,registration_url,am_i_registered_url,absentee_url,where_do_i_vote_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                   line['ID'],
                   line.get('NAME'),
                   line.get('EO_ID'),
+                  line.get('PHYSICAL_ADDRESS'),
                   line.get('MAILING_ADDRESS'),
                   line.get('CITY'),
-                  line.get('STATE'),
+                  line.get('STATE', config.get('Main', 'state_abbreviation')),
                   line.get('ZIP'),
                   line.get('ZIP_PLUS'),
                   line.get('ELECTIONS_URL'),
@@ -364,7 +367,7 @@ def load_data(cursor, config):
               )
             
             elif i=='state':
-              print line
+#              print line
               cursor.execute(
                 "INSERT INTO State(id,name,election_administration_id,organization_url) VALUES (?,?,?,?)",
                 (
@@ -452,7 +455,8 @@ def load_data(cursor, config):
                   )
                 )
               except:
-                print line
+                pass
+#                print line
               
             elif i=='precinct':
               cursor.execute(

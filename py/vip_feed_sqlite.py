@@ -1,4 +1,5 @@
 import sys
+import re
 import datetime
 import os.path
 import glob
@@ -9,7 +10,6 @@ from db.setupdb import setupdb
 from datetime import datetime, tzinfo
 from optparse import OptionParser,make_option
 from ConfigParser import SafeConfigParser
-#from utils import get_files
 from xml.sax.saxutils import escape,unescape
 
 def main():
@@ -183,34 +183,37 @@ def create_election_admins(w, cursor):
     name = ET.SubElement(root,"name")
     name.text = row['name']
     
-    if row['eo_id'] is not None:
+    if row['eo_id'] is not None and len(row['eo_id']) > 0:
       eo_id = ET.SubElement(root,"eo_id")
       eo_id.text = unicode(row['eo_id'])
-    
-    if row['mailing_address'] is not None and len(row['mailing_address'])>0:
-      mailing = ET.SubElement(root,"mailing_address")
-      line1 = ET.SubElement(mailing,"line1")
-      line1.text = escape(row['mailing_address'])
-      city = ET.SubElement(mailing,"city")
-      city.text = row['city']
-      state = ET.SubElement(mailing,"state")
-      state.text = row['state']
-      zipcode = ET.SubElement(mailing,"zip")
+
+    if row['physical_address'] is not None and len(row['physical_address']) > 0:
+      physical = ET.SubElement(root, "physical_address")
+      address = parse_address(row['physical_address'], physical=True)
+
+      for k, v in zip(address.keys(), address.values()):
+        if v:
+          node = ET.SubElement(physical, k)
+          node.text = escape(v)
+
+    if row['mailing_address'] is not None and len(row['mailing_address']) > 0:
+      mailing = ET.SubElement(root, "mailing_address")
+      address = parse_address(row['mailing_address'])
+
+      for k, v in zip(address.keys(), address.values()):
+        if v:
+          node = ET.SubElement(mailing, k)
+          node.text = escape(v)
       
-      if row['zip_plus'] is not None and len(row['zip_plus'])>0:
-        zipcode.text = "{0}-{1}".format(row['zip'],row['zip_plus'])
-      else:
-        zipcode.text = row['zip']
-      
-    if row['elections_url'] is not None and len(row['elections_url'])>0:
+    if row['elections_url'] is not None and len(row['elections_url']) > 0:
       elections_url = ET.SubElement(root,"elections_url")
       elections_url.text = row['elections_url']
       
-    if row['registration_url'] is not None and len(row['registration_url'])>0:
+    if row['registration_url'] is not None and len(row['registration_url']) > 0:
       registration_url = ET.SubElement(root,"registration_url")
       registration_url.text = row['registration_url']
     
-    if row['am_i_registered_url'] is not None and len(row['am_i_registered_url'])>0:
+    if row['am_i_registered_url'] is not None and len(row['am_i_registered_url']) > 0:
       am_i_registered_url = ET.SubElement(root,"am_i_registered_url")
       am_i_registered_url.text = row['am_i_registered_url']
     
@@ -218,11 +221,68 @@ def create_election_admins(w, cursor):
       absentee_url = ET.SubElement(root,"absentee_url")
       absentee_url.text = row['absentee_url']
     
-    if row['where_do_i_vote_url'] is not None and len(row['where_do_i_vote_url'])>0:
+    if row['where_do_i_vote_url'] is not None and len(row['where_do_i_vote_url']) > 0:
       where_do_i_vote = ET.SubElement(root,"where_do_i_vote_url")
       where_do_i_vote.text = row['where_do_i_vote_url']
     
     w.write(ET.tostring(root))
+
+def parse_address(address, physical=False):
+  if address:
+    index = 0
+    found_pobox = False
+    re_mailing = re.compile(r"(?P<pobox>P\.?O\.? Box \d+)", re.IGNORECASE)
+    result = dict((key, "") for key in ['location_name', 'line1', 'line2', 'city', 'state', 'zip',])
+    modified_address = address
+
+    before, sep, after = modified_address.rpartition("PA")
+
+    result['state'] = sep.strip() or "PA"
+    result['zip'] = after.strip()
+
+    modified_address = before
+
+    if(address and address[0].isdigit() is False):
+      ## is this a mailing address with a PO Box?
+      m = re_mailing.search(modified_address)
+      
+      if m:
+        found_pobox = True
+        if not physical:
+          result['line1'] = m.group('pobox')
+
+        if m.start() > 0:
+          result['location_name'] = modified_address[:m.start()].rstrip(',')
+
+        modified_address = modified_address[:m.start()] + modified_address[m.end():]
+
+      else:
+        m = re.search("\d", modified_address)
+
+        if m:
+          index = m.start()
+          result['location_name'] = modified_address[:index].rstrip(',')
+
+          modified_address = modified_address[index:]
+
+    if not physical:
+      result['location_name'] = ""
+
+    address_list = modified_address.rstrip().rsplit(" ", 1)
+
+    if len(address_list) > 0:
+      result['city'] = address_list[-1:][0].rstrip(',')
+      modified_address = ' '.join(address_list[:-1])
+    else:
+      result['city'] = ''
+
+    if physical or not found_pobox:
+      result['line1'] = modified_address
+
+  else:
+    result = None
+
+  return result
 
 def create_election_officials(w, cursor):
   """Writes all election official information"""
@@ -573,7 +633,8 @@ def create_street_segments(w, cursor, config):
   
       w.write(ET.tostring(root))
     except:
-      print row
+      pass
+#      print row
   
 def create_polling_locations(w, cursor, config):
   print "Creating polling place elements..."
