@@ -52,7 +52,7 @@ def main():
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
     create_precinct_splits(w, cursor, config)
-    create_street_segments(w, cursor, config)
+#    create_street_segments(w, cursor, config)
     create_polling_locations(w, cursor, config)
     
     w.write('</vip_object>')
@@ -64,7 +64,7 @@ def create_header(w, cursor, config, now):
     VIP_Info.source_id AS source_id,
     State.id AS state_id,
     State.name AS state_name,
-    VIP_Info.id AS vip_id,
+    '42' AS vip_id,
     ? AS datetime,
     description,
     organization_url,
@@ -229,18 +229,18 @@ def create_election_admins(w, cursor):
 
 def parse_address(address, physical=False):
   if address:
-    index = 0
     found_pobox = False
     re_mailing = re.compile(r"(?P<pobox>P\.?O\.? Box \d+)", re.IGNORECASE)
+    re_state = re.compile(r"P[a|A]\.?")
     result = dict((key, "") for key in ['location_name', 'line1', 'line2', 'city', 'state', 'zip',])
     modified_address = address
 
-    before, sep, after = modified_address.rpartition("PA")
-
-    result['state'] = sep.strip() or "PA"
-    result['zip'] = after.strip()
-
-    modified_address = before
+    m = re_state.search(modified_address)
+    
+    if m:
+      result['state'] = m.group(0).rstrip('.') or "PA"
+      result['zip'] = modified_address[m.end():].strip()
+      modified_address = modified_address[:m.start()].strip()
 
     if(address and address[0].isdigit() is False):
       ## is this a mailing address with a PO Box?
@@ -248,22 +248,17 @@ def parse_address(address, physical=False):
       
       if m:
         found_pobox = True
+
         if not physical:
           result['line1'] = m.group('pobox')
 
-        if m.start() > 0:
-          result['location_name'] = modified_address[:m.start()].rstrip(',')
-
         modified_address = modified_address[:m.start()] + modified_address[m.end():]
 
-      else:
-        m = re.search("\d", modified_address)
+      m = re.search("\d", modified_address)
 
-        if m:
-          index = m.start()
-          result['location_name'] = modified_address[:index].rstrip(',')
-
-          modified_address = modified_address[index:]
+      if m:
+        result['location_name'] = modified_address[:m.start()].rstrip(',')
+        modified_address = modified_address[m.start():]
 
     if not physical:
       result['location_name'] = ""
@@ -281,6 +276,7 @@ def parse_address(address, physical=False):
 
   else:
     result = None
+  print address, result
 
   return result
 
