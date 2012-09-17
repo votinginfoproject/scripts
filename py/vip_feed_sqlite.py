@@ -47,8 +47,8 @@ def main():
     
     create_header(w, cursor, config, now)
     create_election(w, cursor, config)
-    create_election_admins(w, cursor)
-    create_election_officials(w, cursor)
+    create_election_admins(w, cursor, config)
+    create_election_officials(w, cursor, config)
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
     create_precinct_splits(w, cursor, config)
@@ -168,7 +168,7 @@ def create_election(w, cursor, config):
     
     w.write(ET.tostring(root))
   
-def create_election_admins(w, cursor):
+def create_election_admins(w, cursor, config):
   """Writes all election administration information"""
   print "Creating election administration elements..."
   
@@ -178,7 +178,9 @@ def create_election_admins(w, cursor):
     """)
 
   for row in cursor:
-    root = ET.Element("election_administration",id=unicode(row['id']))
+    root = ET.Element("election_administration",id=''.join(
+          [config.get('Election_Administration', 'election_admin_prefix'),
+           unicode(row['id'])]))
     
     name = ET.SubElement(root,"name")
     name.text = row['name']
@@ -276,11 +278,10 @@ def parse_address(address, physical=False):
 
   else:
     result = None
-  print address, result
 
   return result
 
-def create_election_officials(w, cursor):
+def create_election_officials(w, cursor, config):
   """Writes all election official information"""
   print "Creating election official elements..."
   
@@ -318,11 +319,12 @@ def create_localities(w, cursor, config):
     name,
     state_id,
     type,
-    election_administration_id
+    ?||election_administration_id AS election_administration_id
     FROM
       Locality""",
     (
       config.get('Locality','locality_prefix'),
+      config.get('Election_Administration','election_admin_prefix'),
     )
   )
   
