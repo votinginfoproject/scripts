@@ -6,11 +6,10 @@ import sqlite3
 import xml.etree.cElementTree as ET
 from db.datastore import Datastore
 from db.setupdb import setupdb
-from datetime import datetime, tzinfo
-from optparse import OptionParser,make_option
+from datetime import datetime, date, tzinfo
+from optparse import OptionParser, make_option
 from ConfigParser import SafeConfigParser
-from utils import get_files
-from xml.sax.saxutils import escape,unescape
+from xml.sax.saxutils import escape, unescape
 
 def main():
   """Set it off"""
@@ -31,15 +30,29 @@ def main():
     sys.exit("Please specify a valid config file")
   
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
-  setupdb(database, config)
+
+  if opts.refreshdb:
+    setupdb(database, config)
+
   datastore = Datastore(database)
   cursor = datastore.connect()
-  
-  vip_file = "{0}vipFeed-{1}_filtered.xml".format(config.get('Main','output_dir'),config.get('Main','fips'))
-  
+
+  cursor.execute("SELECT date FROM Election")
+  row = cursor.fetchone()
+
+  if row:
+    vip_file = "{0}vipFeed-{1}-{2}.xml".format(
+      config.get('Main','output_dir'),
+      config.get('Main','fips'),
+      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+    )
+
+  else:
+    sys.exit("Could not get election date")
+
   with open(vip_file,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v2.2a.xsd" schemaVersion="2.2">
+<vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
     create_header(w, cursor, now)
@@ -112,7 +125,8 @@ def create_election(w, cursor):
   
   cursor.execute("SELECT * FROM Election")
   
-  for row in cursor:
+  row = cursor.fetchone()
+  if row:
     root = ET.Element("election",id=unicode(row['id']))
     
     date = ET.SubElement(root,"date")
@@ -572,6 +586,10 @@ def create_options_list():
       dest="config", default="config.ini",
       help="Specifies a config file",
       metavar="CONFIG_FILE"),
+    
+    make_option("", "--refreshdb", dest="refreshdb",
+      default=False, action="store_true",
+      help="Reload the database"),
   ]
   
   return option_list
