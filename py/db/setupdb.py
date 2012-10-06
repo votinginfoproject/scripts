@@ -345,6 +345,26 @@ def load_data(cursor, config):
               )
               
             elif i=='election_administration':
+              if reader.line_num==0:
+                cursor.execute(
+                  "INSERT INTO Election_Administration(id,name,eo_id,physical_address,mailing_address,city,state,zip,zip_plus,elections_url,registration_url,am_i_registered_url,absentee_url,where_do_i_vote_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (
+                    '2289',
+                    "Bureau of Commissions, Elections and Legislation",
+                    "",
+                    "210 N. Office Building",
+                    "210 N. Office Building",
+                    "Harrisburg",
+                    config.get('Main', 'state_abbreviation'),
+                    "17120",
+                    "",
+                    "http://www.dos.state.pa.us/portal/server.pt/community/voting_and__elections/12363",
+                    "http://www.votespa.com/portal/server.pt?open=514&objID=1174117&parentname=ObjMgr&parentid=1&mode=2",
+                    "https://www.pavoterservices.state.pa.us/Pages/VoterRegistrationStatus.aspx",
+                    "http://www.votespa.com/portal/server.pt?open=514&objID=1174088&parentname=ObjMgr&parentid=7&mode=2",
+                    "http://www.votespa.com/portal/server.pt?open=514&objID=1174087&parentname=ObjMgr&parentid=4&mode=2",
+                  )
+                )
               # ID|name|eo_id|ovc_id|Physical_Address|Mailing_Address|elections_url|Registration_url|AM_i_registered_url|Absentee_url|Where_do_i_vote_url|What_is_on_my_ballot_url|Rules_url|voter_services|hours
               cursor.execute(
                 "INSERT INTO Election_Administration(id,name,eo_id,physical_address,mailing_address,city,state,zip,zip_plus,elections_url,registration_url,am_i_registered_url,absentee_url,where_do_i_vote_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -373,8 +393,8 @@ def load_data(cursor, config):
                 (
                   line.get('ID', config.get('Main','fips')),
                   line.get('NAME'),
-                  line.get('ELECTION_ADMINISTRATION_ID'),
-                  line.get('ORGANIZATION_URL',''),
+                  '2289',
+                  line.get('ORGANIZATION_URL','http://www.dos.state.pa.us/portal/server.pt/community/voting_and__elections/12363'),
                 )
               )
             
