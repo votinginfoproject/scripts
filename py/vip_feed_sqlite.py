@@ -37,6 +37,19 @@ def main():
     
   datastore = Datastore(database)
   cursor = datastore.connect()
+
+  cursor.execute("SELECT date FROM Election")
+  row = cursor.fetchone()
+
+  if row:
+    vip_file = "{0}vipFeed-{1}-{2}.xml".format(
+      config.get('Main','output_dir'),
+      config.get('Main','fips'),
+      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+    )
+
+  else:
+    sys.exit("Could not get election date")
   
   vip_file = "{0}vipFeed-{1}.xml".format(config.get('Main','output_dir'),config.get('Main','fips'))
   
