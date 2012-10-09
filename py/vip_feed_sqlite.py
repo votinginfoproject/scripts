@@ -12,6 +12,8 @@ from optparse import OptionParser,make_option
 from ConfigParser import SafeConfigParser
 from xml.sax.saxutils import escape,unescape
 
+import zipfile
+
 def main():
   """Set it off"""
   now = datetime.now()
@@ -48,13 +50,17 @@ def main():
       datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
     )
 
+    vip_zip_file = "{0}vipFeed-{1}-{2}.zip".format(
+      config.get('Main','output_dir'),
+      config.get('Main','fips'),
+      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+    )
+
   else:
     sys.exit("Could not get election date")
   
-  vip_file = "{0}vipFeed-{1}.xml".format(config.get('Main','output_dir'),config.get('Main','fips'))
-  
   with open(vip_file,'w') as w:
-    w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+    w.write("""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
 <vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
@@ -69,6 +75,36 @@ def main():
     create_polling_locations(w, cursor, config)
     
     w.write('</vip_object>')
+
+  try:
+    import zlib
+    compression = zipfile.ZIP_DEFLATED
+  except:
+    compression = zipfile.ZIP_STORED
+
+  modes = {
+    zipfile.ZIP_DEFLATED: 'deflated',
+    zipfile.ZIP_STORED: 'stored',
+  }
+
+  if os.path.exists(vip_zip_file):
+    print "removing {0}".format(vip_zip_file)
+    os.remove(vip_zip_file)
+
+  print 'creating archive'
+  zf = zipfile.ZipFile(vip_zip_file, mode='w')
+
+  try:
+    print 'adding  with compression mode', modes[compression]
+    zf.write(vip_file, compress_type=compression)
+  finally:
+    print 'closing'
+    zf.close()
+    print "removing {0}".format(vip_file)
+    try:
+      os.remove(vip_file)
+    except Exception, e:
+      print e
 
 def create_header(w, cursor, config, now):
   print "Creating source and state elements..."
