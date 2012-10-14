@@ -92,7 +92,7 @@ sub output_localities {
 sub output_precincts {
   my $precincts = shift;
   my $base_dir = shift;
-  my @output_headers = qw(id name locality_id polling_location_id);
+  my @output_headers = qw(id number name locality_id polling_location_id);
   my $headers = join("|",@output_headers);
   
   # output file
@@ -106,7 +106,7 @@ sub output_precincts {
   
   foreach my $id (keys %{$precincts}) {
     my @output_line;
-    push(@output_line,($id, $precincts->{$id}->{name}, $precincts->{$id}->{locality_id}, $precincts->{$id}->{polling_location_id}));
+    push(@output_line,($id, $id, $precincts->{$id}->{name}, $precincts->{$id}->{locality_id}, $precincts->{$id}->{polling_location_id}));
     $csv->print($wh, \@output_line);
   }
   
@@ -144,7 +144,7 @@ if ($file) {
     $file,
     header => 1,
     key_case => 'lower',
-    sep_char => '|'
+    sep_char => ','
   );
   
   # output file

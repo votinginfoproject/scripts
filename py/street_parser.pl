@@ -200,8 +200,8 @@ if ($file) {
     
     $address = join(" ",
       $csv_line->{'home-no'},
-      $csv_line->{'home-street'},
-      $csv_line->{'home-dev'}
+      $csv_line->{'home-street'}#,
+#      $csv_line->{'home-dev'}
     );
     
     $address = trim($address) . " " . $csv_line->{'home-apt'};
