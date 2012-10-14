@@ -11,6 +11,8 @@ from optparse import OptionParser,make_option
 from ConfigParser import SafeConfigParser
 from xml.sax.saxutils import escape,unescape
 
+import zipfile
+
 def main():
   """Set it off"""
   now = datetime.now()
@@ -29,6 +31,9 @@ def main():
   else:
     sys.exit("Please specify a valid config file")
   
+  OUTPUT_DIR = config.get('Main','output_dir')
+  DATA_DIR = config.get('Main','data_dir')
+
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
   
   if opts.refreshdb:
@@ -37,17 +42,37 @@ def main():
   datastore = Datastore(database)
   cursor = datastore.connect()
   
-  vip_file = "{0}vipFeed-{1}.xml".format(config.get('Main','output_dir'),config.get('Main','fips'))
+  cursor.execute("SELECT date FROM Election")
+  row = cursor.fetchone()
+
+  if row:
+    VIP_FILE_NAME = "vipFeed-{0}-{1}.xml".format(
+      config.get('Main','fips'),
+      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+    )
+    
+    VIP_FILE = os.path.join(OUTPUT_DIR, VIP_FILE_NAME)
+
+  if row:
+    ZIP_FILE_NAME = "vipFeed-{0}-{1}.zip".format(
+      config.get('Main','fips'),
+      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+    )
+
+    ZIP_FILE = os.path.join(OUTPUT_DIR, ZIP_FILE_NAME)
+
+  else:
+    sys.exit("Could not get election date")
   
-  with open(vip_file,'w') as w:
+  with open(VIP_FILE,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
-    create_header(w, cursor, now)
+    create_header(w, cursor, now, config)
     create_election(w, cursor)
-    create_election_admins(w, cursor)
-    create_election_officials(w, cursor)
+    create_election_admins(w, cursor, config)
+    create_election_officials(w, cursor, config)
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
     #create_precinct_splits(w, cursor, config)
@@ -56,7 +81,39 @@ def main():
     
     w.write('</vip_object>')
 
-def create_header(w, cursor, now):
+  try:
+    compression = zipfile.ZIP_DEFLATED
+  except:
+    compression = zipfile.ZIP_STORED
+
+  modes = {
+    zipfile.ZIP_DEFLATED: 'deflated',
+    zipfile.ZIP_STORED: 'stored',
+  }
+
+  if os.path.exists(ZIP_FILE):
+    print "removing {0}".format(ZIP_FILE)
+    os.remove(ZIP_FILE)
+
+  print 'creating archive'
+  zf = zipfile.ZipFile(ZIP_FILE, mode='w')
+
+  try:
+    print 'adding with compression mode', modes[compression]
+    zf.write(
+      VIP_FILE,
+      VIP_FILE_NAME,
+      compress_type=compression)
+  finally:
+    print 'closing'
+    zf.close()
+    print "removing {0}".format(VIP_FILE)
+    try:
+      os.remove(VIP_FILE)
+    except Exception, e:
+      print e
+
+def create_header(w, cursor, now, config):
   print "Creating source and state elements..."
   
   cursor.execute("""SELECT
@@ -67,13 +124,17 @@ def create_header(w, cursor, now):
     ? AS datetime,
     description,
     organization_url,
-    election_administration_id
+    ? || election_administration_id AS election_administration_id
   FROM
     VIP_Info,
     State
   WHERE
     State.id=VIP_Info.state_id
-  """,(now.strftime('%Y-%m-%dT%H:%M:%S'),))
+  """, (
+      now.strftime('%Y-%m-%dT%H:%M:%S'),
+      config.get('Election_Administration', 'election_admin_prefix'),
+    )
+  )
 
 #   cursor.execute("""SELECT
 #     VIP_Info.source_id AS source_id,
@@ -118,9 +179,9 @@ def create_header(w, cursor, now):
   name = ET.SubElement(state,"name")
   name.text = row['state_name']
   
-#   if row['election_administration_id'] is not None and len(row['election_administration_id'])>0:
-#     election_administration_id = ET.SubElement(state,"election_administration_id")
-#     election_administration_id.text = unicode(row['election_administration_id'])
+  if row['election_administration_id'] is not None:
+    election_administration_id = ET.SubElement(state,"election_administration_id")
+    election_administration_id.text = unicode(row['election_administration_id'])
   
   w.write(ET.tostring(state))
 
@@ -149,40 +210,48 @@ def create_election(w, cursor):
     
     w.write(ET.tostring(root))
   
-def create_election_admins(w, cursor):
+def create_election_admins(w, cursor, config):
   """Writes all election administration information"""
   print "Creating election administration elements..."
   
   cursor.execute("""SELECT *
     FROM
-      Election_Administration AS ea, Election_Official AS eo
-    WHERE
-      eo.id = ea.eo_id""")
+      Election_Administration AS ea
+    """)
 
   for row in cursor:
-    root = ET.Element("election_administration",id=unicode(row['id']))
+    root = ET.Element(
+      "election_administration",
+      id="{0}{1}".format(
+        config.get("Election_Administration", "election_admin_prefix"),
+        unicode(row['id'])
+      )
+    )
     
     name = ET.SubElement(root,"name")
     name.text = row['name']
     
-    if row['eo_id'] is not None:
+    if row['eo_id'] is not None and len(unicode(row['eo_id'])) > 0:
       eo_id = ET.SubElement(root,"eo_id")
-      eo_id.text = unicode(row['eo_id'])
+      eo_id.text = "{0}{1}".format(
+        config.get("Election_Official", "election_official_prefix"),
+        unicode(row['eo_id'])
+      )
     
-    if row['mailing_address'] is not None and len(row['mailing_address'])>0:
-      mailing = ET.SubElement(root,"mailing_address")
-      line1 = ET.SubElement(mailing,"line1")
-      line1.text = escape(row['mailing_address'])
-      city = ET.SubElement(mailing,"city")
-      city.text = row['city']
-      state = ET.SubElement(mailing,"state")
+    if row['physical_address_line1'] is not None and len(row['physical_address_line1'])>0:
+      physical = ET.SubElement(root, "physical_address")
+      line1 = ET.SubElement(physical, "line1")
+      line1.text = escape(row['physical_address_line1'])
+      city = ET.SubElement(physical, "city")
+      city.text = row['physical_address_city']
+      state = ET.SubElement(physical, "state")
       state.text = row['state']
-      zipcode = ET.SubElement(mailing,"zip")
+      zipcode = ET.SubElement(physical, "zip")
       
-      if row['zip_plus'] is not None and len(row['zip_plus'])>0:
-        zipcode.text = "{0}-{1}".format(row['zip'],row['zip_plus'])
+      if row['physical_address_zip_plus'] is not None and len(row['physical_address_zip_plus'])>0:
+        zipcode.text = "{0}-{1}".format(row['physical_address_zip'], row['physical_address_zip_plus'])
       else:
-        zipcode.text = row['zip']
+        zipcode.text = row['physical_address_zip']
       
     if row['elections_url'] is not None and len(row['elections_url'])>0:
       elections_url = ET.SubElement(root,"elections_url")
@@ -206,14 +275,20 @@ def create_election_admins(w, cursor):
     
     w.write(ET.tostring(root))
 
-def create_election_officials(w, cursor):
+def create_election_officials(w, cursor, config):
   """Writes all election official information"""
   print "Creating election official elements..."
   
   cursor.execute("SELECT * FROM Election_Official")
 
   for row in cursor:
-    root = ET.Element("election_official",id=unicode(row['id']))
+    root = ET.Element(
+      "election_official",
+      id="{0}{1}".format(
+        config.get("Election_Official", "election_official_prefix"),
+        unicode(row['id'])
+      )
+    )
     
     name = ET.SubElement(root,"name")
     name.text = row['name']
@@ -244,24 +319,27 @@ def create_localities(w, cursor, config):
     name,
     state_id,
     type,
-    election_administration_id
-  FROM Locality""",
-  (config.get('Locality','locality_prefix'),))
+    ?||election_administration_id AS election_administration_id
+  FROM Locality""", (
+      config.get('Locality','locality_prefix'),
+      config.get('Election_Administration','election_admin_prefix'),
+    )
+  )
   
   for row in cursor:
-    root = ET.Element("locality",id=unicode(row['id']))
+    root = ET.Element("locality", id=unicode(row['id']))
     
     name = ET.SubElement(root,"name")
     name.text = row['name']
     
-    state_id = ET.SubElement(root,"state_id")
+    state_id = ET.SubElement(root, "state_id")
     state_id.text = unicode(row['state_id'])
     
-    locality_type = ET.SubElement(root,"type")
+    locality_type = ET.SubElement(root, "type")
     locality_type.text = row['type']
     
     if row['election_administration_id'] is not None:
-      election_administration_id = ET.SubElement(root,"election_administration_id")
+      election_administration_id = ET.SubElement(root, "election_administration_id")
       election_administration_id.text = unicode(row['election_administration_id'])
     
     w.write(ET.tostring(root))

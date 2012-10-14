@@ -144,11 +144,17 @@ precinct_split_id INTEGER REFERENCES Precint_Split (id)
 id INTEGER PRIMARY KEY,
 name TEXT,
 eo_id INTEGER,
-mailing_address TEXT,
-city TEXT,
+mailing_address_line1 TEXT,
+mailing_address_line2 TEXT,
+mailing_address_city TEXT,
+mailing_address_zip TEXT,
+mailing_address_zip_plus TEXT,
+physical_address_line1 TEXT,
+physical_address_line2 TEXT,
+physical_address_city TEXT,
+physical_address_zip TEXT,
+physical_address_zip_plus TEXT,
 state TEXT,
-zip TEXT,
-zip_plus TEXT,
 elections_url TEXT,
 registration_url TEXT,
 am_i_registered_url TEXT,
@@ -319,39 +325,43 @@ def load_data(cursor, config):
         try:
           for line in get_line(r, reader, parser_type):
             if i=='source':
-              print line
               cursor.execute(
                 "INSERT INTO VIP_Info(id,source_id,description,state_id) VALUES (?,?,?,?)",
                 (
                   line['VIP_ID'],
                   line['ID'],
-                  line.get('DESCRIPTION',None),
+                  line.get('DESCRIPTION'),
                   line.get('STATE_ID', config.get('Main','fips')),
                 )
               )
               
             elif i=='election_administration':
               cursor.execute(
-                "INSERT OR IGNORE INTO Election_Administration(id,name,eo_id,mailing_address,city,state,zip,zip_plus,elections_url,registration_url,am_i_registered_url,absentee_url,where_do_i_vote_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT OR IGNORE INTO Election_Administration(id,name,eo_id,mailing_address_line1,mailing_address_line2,mailing_address_city,mailing_address_zip,mailing_address_zip_plus,physical_address_line1,physical_address_line2,physical_address_city,physical_address_zip,physical_address_zip_plus,state,elections_url,registration_url,am_i_registered_url,absentee_url,where_do_i_vote_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
                   line['ID'],
-                  line.get('NAME', None),
-                  line.get('EO_ID', None),
-                  line.get('MAILING_ADDRESS', None),
-                  line.get('CITY', None),
-                  line.get('STATE', None),
-                  line.get('ZIP', None),
-                  line.get('ZIP_PLUS', None),
-                  line.get('ELECTIONS_URL', None),
-                  line.get('REGISTRATION_URL', None),
-                  line.get('AM_I_REGISTERED_URL', None),
-                  line.get('ABSENTEE_URL', None),
-                  line.get('WHERE_DO_I_VOTE_URL', None),
+                  line.get('NAME'),
+                  line.get('EO_ID'),
+                  line.get('MAILING_ADDRESS_LINE1'),
+                  line.get('MAILING_ADDRESS_LINE2'),
+                  line.get('MAILING_ADDRESS_CITY'),
+                  line.get('MAILING_ADDRESS_ZIP'),
+                  line.get('MAILING_ADDRESS_ZIP_PLUS'),
+                  line.get('PHYSICAL_ADDRESS_LINE1'),
+                  line.get('PHYSICAL_ADDRESS_LINE2'),
+                  line.get('PHYSICAL_ADDRESS_CITY'),
+                  line.get('PHYSICAL_ADDRESS_ZIP'),
+                  line.get('PHYSICAL_ADDRESS_ZIP_PLUS'),
+                  line.get('STATE', config.get('Main', 'state_abbreviation')),
+                  line.get('ELECTIONS_URL'),
+                  line.get('REGISTRATION_URL'),
+                  line.get('AM_I_REGISTERED_URL'),
+                  line.get('ABSENTEE_URL'),
+                  line.get('WHERE_DO_I_VOTE_URL'),
                 )
               )
             
             elif i=='state':
-              print line
               cursor.execute(
                 "INSERT INTO State(id,name,election_administration_id,organization_url) VALUES (?,?,?,?)",
                 (
@@ -371,7 +381,7 @@ def load_data(cursor, config):
                   line.get('ELECTION_TYPE', "General"),
                   line.get('STATE_ID', config.get('Main','fips')),
                   line.get('STATEWIDE', "Yes"),
-                  line.get('REGISTRATION_INFO', None),
+                  line.get('REGISTRATION_INFO'),
                 )
               )
             
@@ -381,10 +391,10 @@ def load_data(cursor, config):
                 (
                   line['ID'],
                   line.get('NAME'),
-                  line.get('TITLE', None),
-                  line.get('PHONE', None),
-                  line.get('FAX', None),
-                  line.get('EMAIL', None)
+                  line.get('TITLE'),
+                  line.get('PHONE'),
+                  line.get('FAX'),
+                  line.get('EMAIL')
                 )
               )
               
@@ -538,18 +548,18 @@ def load_data(cursor, config):
                   line.get('ID'),
                   line.get('START_HOUSE_NUMBER', 0),
                   line.get('END_HOUSE_NUMBER', 0),
-                  line.get('ODD_EVEN_BOTH', None),
-                  line.get('START_APARTMENT_NUMBER', None),
-                  line.get('END_APARTMENT_NUMBER', None),
-                  line.get('STREET_DIRECTION', None),
-                  line.get('STREET_NAME', None),
-                  line.get('STREET_SUFFIX', None),
-                  line.get('ADDRESS_DIRECTION', None),
+                  line.get('ODD_EVEN_BOTH'),
+                  line.get('START_APARTMENT_NUMBER'),
+                  line.get('END_APARTMENT_NUMBER'),
+                  line.get('STREET_DIRECTION'),
+                  line.get('STREET_NAME'),
+                  line.get('STREET_SUFFIX'),
+                  line.get('ADDRESS_DIRECTION'),
                   line.get('STATE', config.get('Main', 'state_abbreviation')),
                   line.get('CITY', ''),
                   line.get('ZIP', ''),
-                  line.get('PRECINCT_ID', None),
-                  line.get('PRECINCT_SPLIT_ID', None),
+                  line.get('PRECINCT_ID'),
+                  line.get('PRECINCT_SPLIT_ID'),
                 )
               )
               
@@ -560,10 +570,10 @@ def load_data(cursor, config):
           sys.exit("file {0}, line {1}: {2}".format(filename, reader.line_num, e))
 
 def update_data(cursor):
-  pass
-#   print "Updating Precinct Split data..."
-#   cursor.execute("DELETE FROM Precinct_Split WHERE precinct_id NOT IN (SELECT id FROM Precinct)")
-#   
+  print "Deleting useless Street Segment data..."
+  cursor.execute("DELETE FROM Street_Segment WHERE street_name IS NULL OR street_name=''")
+  cursor.execute("DELETE FROM Street_Segment WHERE start_house_number=0 AND end_house_number=0")
+
 #   print "Updating Locality election official data..."
 #   cursor.execute("UPDATE Locality SET election_administration_id=NULL WHERE election_administration_id NOT IN (SELECT id FROM Election_Administration)")
 #   
