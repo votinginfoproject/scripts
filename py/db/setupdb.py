@@ -58,8 +58,8 @@ def create_tables(cursor):
   cursor.execute("""CREATE TABLE IF NOT EXISTS Early_Vote_Site
 (
 id INTEGER PRIMARY KEY,
-name TEXT NOT NULL,
-address TEXT NOT NULL,
+location_name TEXT NOT NULL,
+line1 TEXT NOT NULL,
 city TEXT,
 state TEXT,
 zip TEXT,
@@ -274,6 +274,7 @@ def load_data(cursor, config):
     'election',
 #    'election_official',
     'locality',
+    'early_vote_site',
     'polling_location',
     'precinct',
     'precinct_split',
@@ -401,10 +402,24 @@ def load_data(cursor, config):
                 (
                   line['ID'],
                   line.get('LOCATION_NAME',''),
-                  line.get('LINE1',''),
+                  line.get('ADDRESS',''),
                   line.get('CITY',''),
                   line.get('STATE',''),
                   line.get('ZIP',''),
+                )
+              )
+
+            elif i=='early_vote_site':
+              cursor.execute(
+                "INSERT OR IGNORE INTO Early_Vote_Site(id,location_name,line1,city,state,zip,voter_services) VALUES (?,?,?,?,?,?,?)",
+                (
+                  line['ID'],
+                  line.get('LOCATION_NAME',''),
+                  line.get('ADDRESS',''),
+                  line.get('CITY',''),
+                  line.get('STATE',''),
+                  line.get('ZIP',''),
+                  line.get('VOTER_SERVICES',''),
                 )
               )
               
@@ -497,7 +512,7 @@ def load_data(cursor, config):
                   precinct_split_id
                 ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
-                  line.get('ID'),
+                  line.get('STREET_SEGMENT_ID'),
                   line.get('START_HOUSE_NUMBER', None),
                   line.get('END_HOUSE_NUMBER', None),
                   line.get('ODD_EVEN_BOTH', None),

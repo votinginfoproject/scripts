@@ -31,47 +31,54 @@ def main():
   else:
     sys.exit("Please specify a valid config file")
   
-  database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
+  OUTPUT_DIR = config.get('Main','output_dir')
+  DATA_DIR = config.get('Main','data_dir')
 
+  database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
+  
   if opts.refreshdb:
     setupdb(database, config)
-
+    
   datastore = Datastore(database)
   cursor = datastore.connect()
-
+  
   cursor.execute("SELECT date FROM Election")
   row = cursor.fetchone()
 
   if row:
-    vip_file = "{0}vipFeed-{1}-{2}.xml".format(
-      config.get('Main','output_dir'),
+    VIP_FILE_NAME = "vipFeed-{0}-{1}.xml".format(
+      config.get('Main','fips'),
+      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+    )
+    
+    VIP_FILE = os.path.join(OUTPUT_DIR, VIP_FILE_NAME)
+
+  if row:
+    ZIP_FILE_NAME = "vipFeed-{0}-{1}.zip".format(
       config.get('Main','fips'),
       datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
     )
 
-    vip_zip_file = "{0}vipFeed-{1}-{2}.zip".format(
-      config.get('Main','output_dir'),
-      config.get('Main','fips'),
-      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
-    )
+    ZIP_FILE = os.path.join(OUTPUT_DIR, ZIP_FILE_NAME)
 
   else:
     sys.exit("Could not get election date")
-
-  with open(vip_file,'w') as w:
+  
+  with open(VIP_FILE,'w') as w:
     w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
-    create_header(w, cursor, now)
-    create_election(w, cursor)
-    create_election_admins(w, cursor)
-    create_election_officials(w, cursor)
+    create_header(w, cursor, config, now)
+    create_election(w, cursor, config)
+    create_election_admins(w, cursor, config)
+    create_election_officials(w, cursor, config)
     create_localities(w, cursor, config)
     create_precincts(w, cursor, config)
     create_precinct_splits(w, cursor, config)
     create_street_segments(w, cursor, config)
     create_polling_locations(w, cursor, config)
+    create_early_vote_sites(w, cursor, config)
     
     w.write('</vip_object>')
 
@@ -85,26 +92,29 @@ def main():
     zipfile.ZIP_STORED: 'stored',
   }
 
-  if os.path.exists(vip_zip_file):
-    print "removing {0}".format(vip_zip_file)
-    os.remove(vip_zip_file)
+  if os.path.exists(ZIP_FILE):
+    print "removing {0}".format(ZIP_FILE)
+    os.remove(ZIP_FILE)
 
   print 'creating archive'
-  zf = zipfile.ZipFile(vip_zip_file, mode='w')
+  zf = zipfile.ZipFile(ZIP_FILE, mode='w')
 
   try:
     print 'adding with compression mode', modes[compression]
-    zf.write(vip_file, compress_type=compression)
+    zf.write(
+      VIP_FILE,
+      VIP_FILE_NAME,
+      compress_type=compression)
   finally:
     print 'closing'
     zf.close()
-    print "removing {0}".format(vip_file)
+    print "removing {0}".format(VIP_FILE)
     try:
-      os.remove(vip_file)
+      os.remove(VIP_FILE)
     except Exception, e:
       print e
 
-def create_header(w, cursor, now):
+def create_header(w, cursor, config, now):
   print "Creating source and state elements..."
   
   cursor.execute("""SELECT
@@ -157,7 +167,7 @@ def create_header(w, cursor, now):
   
   w.write(ET.tostring(state))
 
-def create_election(w, cursor):
+def create_election(w, cursor, config):
   print "Creating election elements..."
   
   cursor.execute("SELECT * FROM Election")
@@ -183,7 +193,7 @@ def create_election(w, cursor):
     
     w.write(ET.tostring(root))
   
-def create_election_admins(w, cursor):
+def create_election_admins(w, cursor, config):
   """Writes all election administration information"""
   print "Creating election administration elements..."
   
@@ -236,7 +246,7 @@ def create_election_admins(w, cursor):
     
     w.write(ET.tostring(root))
 
-def create_election_officials(w, cursor):
+def create_election_officials(w, cursor, config):
   """Writes all election official information"""
   print "Creating election official elements..."
   
@@ -602,7 +612,48 @@ def create_polling_locations(w, cursor, config):
     zipcode.text = row['zip']
     
     w.write(ET.tostring(root))
-  
+
+def create_early_vote_sites(w, cursor, config):
+  print "Creating polling early vote site elements..."
+
+  cursor.execute("""SELECT
+    ?||id AS id,
+    location_name,
+    TRIM(line1) AS line1,
+    city,
+    ? AS state,
+    zip,
+    voter_services
+  FROM Early_Vote_Site""",
+    (
+      config.get('Early_Vote_Site','early_vote_site_prefix'),
+      config.get('Main', 'state_abbreviation'),
+    )
+  )  
+
+  for row in cursor:
+    root = ET.Element("early_vote_site",id=unicode(row['id']))
+    
+    address = ET.SubElement(root,"address")
+    
+    if row['location_name'] is not None:
+      location_name = ET.SubElement(address,"location_name")
+      location_name.text = escape(row['location_name'])
+    
+    line1 = ET.SubElement(address,"line1")
+    line1.text = escape(row['line1'])
+    city = ET.SubElement(address,"city")
+    city.text = row['city']
+    state = ET.SubElement(address,"state")
+    state.text = row['state']
+    zipcode = ET.SubElement(address,"zip")
+    zipcode.text = row['zip']
+
+    voter_services = ET.SubElement(root,"voter_services")
+    voter_services.text = row['voter_services']
+    
+    w.write(ET.tostring(root))
+
 def config_section_as_dict(config_items):
   """Changes the section list of tuples to a dictionary"""
   data_dict = {}
