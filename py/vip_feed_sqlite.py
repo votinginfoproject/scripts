@@ -32,6 +32,9 @@ def main():
   else:
     sys.exit("Please specify a valid config file")
   
+  OUTPUT_DIR = config.get('Main','output_dir')
+  DATA_DIR = config.get('Main','data_dir')
+
   database = "{0}vip_data.db".format(config.get('DataSource','db_dir'))
   
   if opts.refreshdb:
@@ -39,28 +42,31 @@ def main():
     
   datastore = Datastore(database)
   cursor = datastore.connect()
-
+  
   cursor.execute("SELECT date FROM Election")
   row = cursor.fetchone()
 
   if row:
-    vip_file = "{0}vipFeed-{1}-{2}.xml".format(
-      config.get('Main','output_dir'),
+    VIP_FILE_NAME = "vipFeed-{0}-{1}.xml".format(
+      config.get('Main','fips'),
+      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
+    )
+    
+    VIP_FILE = os.path.join(OUTPUT_DIR, VIP_FILE_NAME)
+
+  if row:
+    ZIP_FILE_NAME = "vipFeed-{0}-{1}.zip".format(
       config.get('Main','fips'),
       datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
     )
 
-    vip_zip_file = "{0}vipFeed-{1}-{2}.zip".format(
-      config.get('Main','output_dir'),
-      config.get('Main','fips'),
-      datetime.strptime(row['date'], '%Y-%m-%d').strftime('%Y-%m-%d')
-    )
+    ZIP_FILE = os.path.join(OUTPUT_DIR, ZIP_FILE_NAME)
 
   else:
     sys.exit("Could not get election date")
   
-  with open(vip_file,'w') as w:
-    w.write("""<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+  with open(VIP_FILE,'w') as w:
+    w.write("""<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <vip_object xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://election-info-standard.googlecode.com/files/vip_spec_v3.0.xsd" schemaVersion="3.0">
 """)
     
@@ -73,11 +79,11 @@ def main():
     create_precinct_splits(w, cursor, config)
     create_street_segments(w, cursor, config)
     create_polling_locations(w, cursor, config)
+    create_early_vote_sites(w, cursor, config)
     
     w.write('</vip_object>')
 
   try:
-    import zlib
     compression = zipfile.ZIP_DEFLATED
   except:
     compression = zipfile.ZIP_STORED
@@ -87,22 +93,25 @@ def main():
     zipfile.ZIP_STORED: 'stored',
   }
 
-  if os.path.exists(vip_zip_file):
-    print "removing {0}".format(vip_zip_file)
-    os.remove(vip_zip_file)
+  if os.path.exists(ZIP_FILE):
+    print "removing {0}".format(ZIP_FILE)
+    os.remove(ZIP_FILE)
 
   print 'creating archive'
-  zf = zipfile.ZipFile(vip_zip_file, mode='w')
+  zf = zipfile.ZipFile(ZIP_FILE, mode='w')
 
   try:
-    print 'adding  with compression mode', modes[compression]
-    zf.write(vip_file, compress_type=compression)
+    print 'adding with compression mode', modes[compression]
+    zf.write(
+      VIP_FILE,
+      VIP_FILE_NAME,
+      compress_type=compression)
   finally:
     print 'closing'
     zf.close()
-    print "removing {0}".format(vip_file)
+    print "removing {0}".format(VIP_FILE)
     try:
-      os.remove(vip_file)
+      os.remove(VIP_FILE)
     except Exception, e:
       print e
 
