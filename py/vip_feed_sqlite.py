@@ -79,7 +79,7 @@ def main():
     create_precinct_splits(w, cursor, config)
     create_street_segments(w, cursor, config)
     create_polling_locations(w, cursor, config)
-    create_early_vote_sites(w, cursor, config)
+#    create_early_vote_sites(w, cursor, config)
     
     w.write('</vip_object>')
 
